@@ -45,6 +45,17 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "x11.h"
 
+#ifdef HAVE_GLES
+#include <EGL/egl.h>
+#include <X11/Xatom.h>
+
+#define KEY_MASK ( KeyPressMask | KeyReleaseMask )
+#define MOUSE_MASK ( ButtonPressMask | ButtonReleaseMask | \
+					 PointerMotionMask | ButtonMotionMask )
+#define X_MASK ( KEY_MASK | MOUSE_MASK | VisibilityChangeMask | StructureNotifyMask )
+
+#endif
+
 #include "unix_glw.h"
 
 #define DISPLAY_MASK ( VisibilityChangeMask | StructureNotifyMask | ExposureMask | PropertyChangeMask )
@@ -55,8 +66,26 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 x11display_t x11display;
 x11wndproc_t x11wndproc;
+#ifndef HAVE_GLES
 
 glwstate_t glw_state;
+
+#else
+void myglMultiTexCoord2f( GLenum texture, GLfloat s, GLfloat t )
+{
+	glMultiTexCoord4f(texture, s, t, 0, 1);
+}
+
+//static Display *dpy = NULL;
+//static int scrnum;
+//static Window win = 0;
+static EGLDisplay   g_EGLDisplay;
+static EGLConfig    g_EGLConfig;
+static EGLContext   g_EGLContext;
+static NativeWindowType	g_EGLWindow;
+static EGLSurface   g_EGLWindowSurface;
+
+#endif	// HAVE_GLES
 
 static qboolean _xf86_vidmodes_supported = qfalse;
 static int default_dotclock, default_viewport[2];
@@ -66,6 +95,7 @@ static int _xf86_vidmodes_num;
 static qboolean _xf86_vidmodes_active = qfalse;
 static qboolean _xf86_xinerama_supported = qfalse;
 
+#ifndef HAVE_GLES
 static void _xf86_VidmodesInit( void )
 {
 	int MajorVersion = 0, MinorVersion = 0;
@@ -458,7 +488,7 @@ static void _x11_SetNoResize( Window w, int width, int height )
 		}
 	}
 }
-
+#endif	//HAVE_GLES
 /*****************************************************************************/
 
 /*
@@ -476,6 +506,13 @@ char *Sys_GetClipboardData( qboolean primary )
 	unsigned char *data;
 	char *buffer;
 	Atom atom;
+/*#ifdef HAVE_GLES
+	#define X11Display	dpy
+	#define X11Root RootWindow(dpy, scrnum)
+#else
+	#define X11Display	x11display.dpy
+	#define X11Root		x11display.root
+#endif*/
 
 	if( !x11display.dpy )
 		return NULL;
@@ -574,6 +611,7 @@ static qboolean _NET_WM_CHECK_SUPPORTED( Atom NET_ATOM )
 	return issupported;
 }
 
+#ifndef HAVE_GLES
 /*
 * _NET_WM_STATE_FULLSCREEN_SUPPORTED
 */
@@ -901,14 +939,31 @@ rserr_t GLimp_SetMode( int x, int y, int width, int height, qboolean fullscreen,
 {
 	return GLimp_SetMode_Real( width, height, fullscreen, wideScreen, qfalse );
 }
-
+#endif	//HAVE_GLES
 /*
 ** GLimp_Shutdown
 */
 void GLimp_Shutdown( void )
 {
+#ifdef HAVE_GLES
+	if (g_EGLWindowSurface && x11display.dpy)
+#else
 	if( x11display.dpy )
+#endif
 	{
+#ifdef HAVE_GLES
+		eglMakeCurrent( g_EGLDisplay, NULL, NULL, EGL_NO_CONTEXT );
+		if (g_EGLContext)
+			eglDestroyContext(g_EGLDisplay, g_EGLContext);
+		if (g_EGLWindowSurface)
+			eglDestroySurface(g_EGLDisplay, g_EGLWindowSurface);
+		eglTerminate(g_EGLDisplay);
+		if ( x11display.gl_win ) {
+			XDestroyWindow( x11display.dpy, x11display.gl_win );
+		}
+		XCloseDisplay( x11display.dpy );
+#else
+
 #ifdef _XRANDR_OVER_VIDMODE_
 		_xf86_XrandrSwitchBack();
 		_xf86_XrandrFree();
@@ -924,8 +979,16 @@ void GLimp_Shutdown( void )
 		if( x11display.win ) XDestroyWindow( x11display.dpy, x11display.win );
 
 		XCloseDisplay( x11display.dpy );
+#endif	//HAVE_GLES
 	}
 
+#ifdef HAVE_GLES
+/*	dpy = NULL;
+	win = 0;*/
+	g_EGLWindowSurface = NULL;
+	g_EGLContext = NULL;
+	g_EGLDisplay = NULL;
+#endif
 	memset(&x11display.features, 0, sizeof(x11display.features));
 	x11display.modeset = qfalse;
 	x11display.visinfo = NULL;
@@ -941,6 +1004,7 @@ void GLimp_Shutdown( void )
 }
 
 static qboolean gotstencil = qfalse; // evil hack!
+#ifndef HAVE_GLES
 static qboolean ChooseVisual( int colorbits, int stencilbits )
 {
 	int colorsize;
@@ -975,12 +1039,151 @@ static qboolean ChooseVisual( int colorbits, int stencilbits )
 		}
 	}
 }
-
+#endif
 /*
 ** GLimp_Init
 */
 int GLimp_Init( void *hinstance, void *wndproc, void *parenthWnd )
 {
+#ifdef HAVE_GLES
+#ifdef PANDORA
+	glState.width = 800;
+	glState.height = 480;
+	glState.fullScreen = 1;
+	glState.wideScreen = 1;
+#endif
+//	glConfig.windowAspect = 800.0 / 480.0;
+
+	long event_mask=X_MASK;
+	x11wndproc = (x11wndproc_t )wndproc;
+
+	if( x11display.dpy )
+		GLimp_Shutdown();
+
+	Com_Printf( "Display initialization\n" );
+
+	x11display.dpy = XOpenDisplay( NULL );
+	if( !x11display.dpy )
+	{
+		Com_Printf( "..Error couldn't open the X display\n" );
+		return 0;
+	}
+
+	x11display.scr = DefaultScreen( x11display.dpy );
+	if( parenthWnd )
+		x11display.root = (Window )parenthWnd;
+	else
+		x11display.root = RootWindow( x11display.dpy, x11display.scr );
+
+	x11display.wmState = XInternAtom( x11display.dpy, "WM_STATE", False );
+	x11display.features.wmStateFullscreen = 1;
+
+	Com_Printf( "setting up EGL window\n");
+ 
+	XSetWindowAttributes attr = { 0 };
+	attr.event_mask = event_mask;
+//	attr.colormap = colormap;
+	attr.override_redirect = qtrue;
+	x11display.gl_win = XCreateWindow(x11display.dpy, x11display.scr,
+		0, 0, glState.width, glState.height, 0, 
+		CopyFromParent, InputOutput,
+		CopyFromParent, CWEventMask, &attr);
+
+	if(!x11display.gl_win) {
+		return qfalse;
+	}
+
+	Atom wmState = XInternAtom(x11display.dpy, "_NET_WM_STATE", False);
+	Atom wmFullscreen = XInternAtom(x11display.dpy, "_NET_WM_STATE_FULLSCREEN", False);
+	XChangeProperty(x11display.dpy, x11display.gl_win, wmState, XA_ATOM, 32, PropModeReplace, (unsigned char *)&wmFullscreen, 1);
+
+	XMapRaised(x11display.dpy, x11display.gl_win);
+
+	g_EGLWindow = (NativeWindowType)x11display.gl_win;
+	#ifdef PANDORA
+	g_EGLDisplay  =  eglGetDisplay((EGLNativeDisplayType)EGL_DEFAULT_DISPLAY);
+	#else
+	g_EGLDisplay  =  eglGetDisplay((EGLNativeDisplayType)x11display.dpy);
+	#endif
+
+	if(g_EGLDisplay == EGL_NO_DISPLAY) {
+		Com_Printf( "error getting EGL display\n");
+		return qfalse;
+	}
+
+	if(!eglInitialize(g_EGLDisplay, NULL, NULL)) {
+		Com_Printf( "error initializing EGL");
+		return 0;
+	}
+
+	const EGLint attribs[] = {
+		EGL_RED_SIZE, 5,
+		EGL_GREEN_SIZE, 6,
+		EGL_BLUE_SIZE, 5,
+		EGL_ALPHA_SIZE, 0,
+		EGL_RENDERABLE_TYPE, EGL_OPENGL_ES_BIT,
+		EGL_SURFACE_TYPE, EGL_WINDOW_BIT|EGL_PBUFFER_BIT,
+		EGL_DEPTH_SIZE, 16,
+		EGL_NONE, 0,
+	};
+
+	EGLint configs = 0;
+	eglChooseConfig(g_EGLDisplay, attribs, &g_EGLConfig, 1, &configs);
+	if(!configs) {
+		static const EGLint eglAttrWinLowColor[] = {
+			EGL_NONE
+		};
+		Com_Printf( "falling back to lowest color config\n");
+		eglChooseConfig(g_EGLDisplay, eglAttrWinLowColor, &g_EGLConfig, 1, &configs);
+		if(!configs) {
+			Com_Printf( "no valid EGL configs found\n");
+			return qfalse;
+		}
+	}
+	
+	#ifdef PANDORA
+	g_EGLWindowSurface = eglCreateWindowSurface(g_EGLDisplay, g_EGLConfig,
+		NULL, NULL);
+	#else
+	g_EGLWindowSurface = eglCreateWindowSurface(g_EGLDisplay, g_EGLConfig,
+		g_EGLWindow, NULL);
+	#endif
+	if(g_EGLWindowSurface == EGL_NO_SURFACE) {
+		Com_Printf( "error creating window surface: 0x%X\n", (int)eglGetError());
+		return qfalse;
+	}
+
+	EGLint ctxAttr[] = {
+		EGL_CONTEXT_CLIENT_VERSION, 1,
+		EGL_NONE
+	};
+	g_EGLContext = eglCreateContext(g_EGLDisplay, g_EGLConfig, EGL_NO_CONTEXT, ctxAttr);
+	if(g_EGLContext == EGL_NO_CONTEXT) {
+		Com_Printf( "error creating context: 0x%X\n", (int)eglGetError());
+		return qfalse;
+	}
+	
+	eglMakeCurrent(g_EGLDisplay, g_EGLWindowSurface, g_EGLWindowSurface, g_EGLContext);
+	{
+	  EGLint width, height, color, depth, stencil;
+	  eglQuerySurface(g_EGLDisplay, g_EGLWindowSurface, EGL_WIDTH, &width);
+	  eglQuerySurface(g_EGLDisplay, g_EGLWindowSurface, EGL_HEIGHT, &height);
+	  Com_Printf("Window size: %dx%d\n", width, height);
+	  eglGetConfigAttrib(g_EGLDisplay, g_EGLConfig, EGL_BUFFER_SIZE, &color);
+	  eglGetConfigAttrib(g_EGLDisplay, g_EGLConfig, EGL_DEPTH_SIZE, &depth);
+	  eglGetConfigAttrib(g_EGLDisplay, g_EGLConfig, EGL_STENCIL_SIZE, &stencil);
+/*	  glConfig.vidWidth = width;
+	  glConfig.vidHeight = height;
+	  glConfig.colorBits = color;
+	  glConfig.depthBits = depth;
+	  glConfig.stencilBits = stencil;*/
+	  glState.stencilEnabled = (stencil!=0);
+	}
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+#else
+
 	int colorbits, stencilbits;
 	XSetWindowAttributes attr;
 	unsigned long mask;
@@ -1022,6 +1225,8 @@ int GLimp_Init( void *hinstance, void *wndproc, void *parenthWnd )
 	else stencilbits = 0;
 
 	gotstencil = qfalse;
+	
+
 	if( colorbits > 0 )
 	{
 		ChooseVisual( colorbits, stencilbits );
@@ -1066,7 +1271,7 @@ int GLimp_Init( void *hinstance, void *wndproc, void *parenthWnd )
 	if( x11wndproc ) {
 		x11wndproc( &x11display, 0, 0, 0 );
 	}
-
+#endif
 	return 1;
 }
 
@@ -1086,6 +1291,9 @@ void GLimp_BeginFrame( void )
 */
 void GLimp_EndFrame( void )
 {
+#ifdef HAVE_GLES
+	eglSwapBuffers(g_EGLDisplay, g_EGLWindowSurface);
+#else
 	qglXSwapBuffers( x11display.dpy, x11display.gl_win );
 
 	if( glState.fullScreen && vid_multiscreen_head->modified )
@@ -1093,6 +1301,7 @@ void GLimp_EndFrame( void )
 		GLimp_SetMode_Real( glState.width, glState.height, qtrue, glState.wideScreen, qtrue );
 		vid_multiscreen_head->modified = qfalse;
 	}
+#endif
 }
 
 /*
@@ -1100,8 +1309,10 @@ void GLimp_EndFrame( void )
 */
 qboolean GLimp_GetGammaRamp( size_t stride, unsigned short *ramp )
 {
+#ifndef HAVE_GLES
 	if( XF86VidModeGetGammaRamp( x11display.dpy, x11display.scr, stride, ramp, ramp + stride, ramp + ( stride << 1 ) ) != 0 )
 		return qtrue;
+#endif
 	return qfalse;
 }
 
@@ -1110,7 +1321,9 @@ qboolean GLimp_GetGammaRamp( size_t stride, unsigned short *ramp )
 */
 void GLimp_SetGammaRamp( size_t stride, unsigned short *ramp )
 {
+#ifndef HAVE_GLES
 	XF86VidModeSetGammaRamp( x11display.dpy, x11display.scr, stride, ramp, ramp + stride, ramp + ( stride << 1 ) );
+#endif
 }
 
 /*

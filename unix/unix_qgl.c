@@ -51,6 +51,9 @@
 #include "x11.h"
 #include "unix_glw.h"
 
+#ifdef HAVE_GLES
+#include "../ref_gl/qgl_linked.h"
+#else
 #define QGL_EXTERN
 
 #define QGL_FUNC( type, name, params ) type( APIENTRY * q ## name ) params;
@@ -59,15 +62,18 @@
 #define QGL_WGL_EXT( type, name, params )
 #define QGL_GLX( type, name, params ) type( APIENTRY * q ## name ) params;
 #define QGL_GLX_EXT( type, name, params ) type( APIENTRY * q ## name ) params;
+//#endif
 
 #include "../ref_gl/qgl.h"
 
+//#ifndef HAVE_GLES
 #undef QGL_GLX_EXT
 #undef QGL_GLX
 #undef QGL_WGL_EXT
 #undef QGL_WGL
 #undef QGL_EXT
 #undef QGL_FUNC
+#endif
 
 static const char *_qglGetGLWExtensionsString( void );
 static const char *_qglGetGLWExtensionsStringInit( void );
@@ -79,6 +85,7 @@ static const char *_qglGetGLWExtensionsStringInit( void );
 */
 void QGL_Shutdown( void )
 {
+#ifndef HAVE_GLES
 	if( glw_state.OpenGLLib )
 		dlclose( glw_state.OpenGLLib );
 	glw_state.OpenGLLib = NULL;
@@ -100,6 +107,7 @@ void QGL_Shutdown( void )
 #undef QGL_WGL
 #undef QGL_EXT
 #undef QGL_FUNC
+#endif
 }
 
 /*
@@ -123,7 +131,7 @@ qboolean QGL_Init( const char *dllname )
 	{
 		Com_Printf( "Using %s for OpenGL...", dllname );
 	}
-
+#ifndef HAVE_GLES
 #define QGL_FUNC( type, name, params ) ( q ## name ) = ( void * )qglGetProcAddress( (const GLubyte *)# name ); \
 	if( !( q ## name ) ) { Com_Printf( "QGL_Init: Failed to get address for %s\n", # name ); return qfalse; }
 #define QGL_EXT( type, name, params ) ( q ## name ) = NULL;
@@ -143,6 +151,7 @@ qboolean QGL_Init( const char *dllname )
 #undef QGL_FUNC
 
 	qglGetGLWExtensionsString = _qglGetGLWExtensionsStringInit;
+#endif
 
 	return qtrue;
 }
@@ -152,9 +161,11 @@ qboolean QGL_Init( const char *dllname )
 */
 void *qglGetProcAddress( const GLubyte *procName )
 {
+#ifndef HAVE_GLES
 #if 1
 	if( qglXGetProcAddressARB )
 		return qglXGetProcAddressARB( procName );
+#endif
 #endif
 	if( glw_state.OpenGLLib )
 		return (void *)dlsym( glw_state.OpenGLLib, (char *) procName );
@@ -166,18 +177,25 @@ void *qglGetProcAddress( const GLubyte *procName )
 */
 static const char *_qglGetGLWExtensionsStringInit( void )
 {
+#ifdef HAVE_GLES
+	return NULL;
+#else
 	int major = 0, minor = 0;
 
 	if( !qglXQueryVersion || !qglXQueryVersion( x11display.dpy, &major, &minor ) || !( minor > 0 || major > 1 ) )
 		qglXQueryExtensionsString = NULL;
+
 	qglGetGLWExtensionsString = _qglGetGLWExtensionsString;
 
 	return qglGetGLWExtensionsString();
+#endif
 }
 
 static const char *_qglGetGLWExtensionsString( void )
 {
+#ifndef HAVE_GLES
 	if( qglXQueryExtensionsString )
 		return qglXQueryExtensionsString( x11display.dpy, x11display.scr );
+#endif
 	return NULL;
 }

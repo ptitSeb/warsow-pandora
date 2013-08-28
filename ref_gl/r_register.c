@@ -142,10 +142,11 @@ static void R_InitVolatileAssets( void );
 static void R_DestroyVolatileAssets( void );
 
 //=======================================================================
-
+#ifndef HAVE_GLES
 #define	GLINF_FOFS(x) (size_t)&(((glextinfo_t *)0)->x)
 #define	GLINF_EXMRK() GLINF_FOFS(_extMarker)
 #define	GLINF_FROM(from,ofs) (*((char *)from + ofs))
+#endif
 
 typedef struct
 {
@@ -163,6 +164,9 @@ typedef struct
 	const size_t offset;					// offset to respective variable
 	const size_t depOffset;					// offset to required pre-initialized variable
 } gl_extension_t;
+#ifdef HAVE_GLES
+#define GL_MAX_CUBE_MAP_TEXTURE_SIZE_ARB	GL_MAX_CUBE_MAP_TEXTURE_SIZE_OES
+#else
 
 #define GL_EXTENSION_FUNC_EXT(name,func) { name, (void ** const)func }
 #define GL_EXTENSION_FUNC(name) GL_EXTENSION_FUNC_EXT("gl"#name,&(qgl##name))
@@ -431,6 +435,8 @@ static const int num_gl_extensions = sizeof( gl_extensions_decl ) / sizeof( gl_e
 #undef GL_EXTENSION
 #undef GL_EXTENSION_EXT
 
+#endif	//HAVE_GLES
+
 /*
 * R_RegisterGLExtensions
 */
@@ -451,7 +457,8 @@ void R_RegisterGLExtensions( void )
 		R_FinalizeGLExtensions ();
 		return;
 	}
-
+	
+#ifndef HAVE_GLES
 	for( i = 0, extension = gl_extensions_decl; i < num_gl_extensions; i++, extension++ )
 	{
 		Q_snprintfz( name, sizeof( name ), "gl_ext_%s", extension->name );
@@ -518,6 +525,7 @@ void R_RegisterGLExtensions( void )
 		// mark extension as available
 		*var = qtrue;
 	}
+#endif	//HAVE_GLES
 
 	R_FinalizeGLExtensions ();
 }
@@ -527,6 +535,7 @@ void R_RegisterGLExtensions( void )
 */
 static void R_PrintGLExtensionsInfo( void )
 {
+#ifndef HAVE_GLES
 	int i;
 	size_t lastOffset;
 	const gl_extension_t *extension;
@@ -539,6 +548,7 @@ static void R_PrintGLExtensionsInfo( void )
 			Com_Printf( "%s: %s\n", extension->name, GLINF_FROM( &glConfig.ext, lastOffset ) ? "enabled" : "disabled" );
 		}
 	}
+#endif
 }
 
 /*
@@ -550,7 +560,7 @@ static void R_PrintMemoryInfo( void )
 
 	Com_Printf( "\n" );
 	Com_Printf( "Video memory information:\n" );
-
+#ifndef HAVE_GLES
 	if( glConfig.ext.gpu_memory_info ) {
 		// NV
 		qglGetIntegerv( GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX, mem );
@@ -579,7 +589,9 @@ static void R_PrintMemoryInfo( void )
 		Com_Printf( "total auxiliary memory free: (VBO:%i, Tex:%i, RBuf:%i) MB\n", mem[2] >> 10, mem[6] >> 10, mem[10] >> 10 );
 		Com_Printf( "largest auxiliary free block: (VBO:%i, Tex:%i, RBuf:%i) MB\n", mem[3] >> 10, mem[7] >> 10, mem[11] >> 10 );
 	}
-	else {
+	else 
+#endif	//HAVE_GLES
+	{
 		Com_Printf( "not available\n" );
 	}
 }
@@ -603,15 +615,19 @@ static void R_FinalizeGLExtensions( void )
 
 	/* GL_ARB_texture_cube_map */
 	glConfig.maxTextureCubemapSize = 0;
+#ifndef HAVE_GLES
 	if( glConfig.ext.texture_cube_map )
 		qglGetIntegerv( GL_MAX_CUBE_MAP_TEXTURE_SIZE_ARB, &glConfig.maxTextureCubemapSize );
+#endif
 	if( glConfig.maxTextureCubemapSize <= 1 )
 		glConfig.ext.texture_cube_map = qfalse;
 
 	/* GL_EXT_texture3D */
 	glConfig.maxTextureSize3D = 0;
+#ifndef HAVE_GLES
 	if( glConfig.ext.texture3D )
 		qglGetIntegerv( GL_MAX_3D_TEXTURE_SIZE, &glConfig.maxTextureSize3D );
+#endif
 	if( glConfig.maxTextureSize3D <= 1 )
 		glConfig.ext.texture3D = qfalse;
 
@@ -629,6 +645,9 @@ static void R_FinalizeGLExtensions( void )
 	if( strstr( glConfig.extensionsString, "GL_EXT_texture_filter_anisotropic" ) )
 		qglGetIntegerv( GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &glConfig.maxTextureFilterAnisotropic );
 
+#ifdef HAVE_GLES
+	glConfig.shadingLanguageVersion100 = 0;
+#else
 	// GLSL version * 100
 	glConfig.shadingLanguageVersion100 = (int)(atof(glConfig.shadingLanguageVersionString) * 100);
 
@@ -650,10 +669,12 @@ static void R_FinalizeGLExtensions( void )
 		// require GLSL version 1.40 and higher
 		glConfig.maxGLSLBones = bound( 0, glConfig.maxVertexUniformComponents / 8 - 20, r_maxglslbones->integer );
 	}
-	else {
+	else 
+#endif	//HAVE_GLES
+	{
 		glConfig.maxGLSLBones = 0;
 	}
-
+#ifndef HAVE_GLES
 	if( glConfig.ext.texture_non_power_of_two )
 	{
 		// blacklist this extension on Radeon X1600-X1950 hardware (they support it only with certain filtering/repeat modes)
@@ -671,7 +692,7 @@ static void R_FinalizeGLExtensions( void )
 			Cvar_ForceSet( "gl_ext_texture_non_power_of_two", "0" );
 		}
 	}
-
+#endif	//HAVE_GLES
 	cvar = Cvar_Get( "gl_ext_vertex_buffer_object_hack", "0", CVAR_ARCHIVE|CVAR_NOSET );
 	if( cvar && !cvar->integer ) 
 	{
@@ -907,7 +928,9 @@ static void R_SetGLDefaults( void )
 
 	qglColor4f( 1, 1, 1, 1 );
 
+#ifndef HAVE_GLES
 	qglPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+#endif
 	qglPolygonOffset( -1, -2 );
 
 	// properly disable multitexturing at startup
@@ -924,7 +947,9 @@ static void R_SetGLDefaults( void )
 	qglDisable( GL_ALPHA_TEST );
 	qglDisable( GL_POLYGON_OFFSET_FILL );
 	qglEnable( GL_TEXTURE_2D );
+#ifndef HAVE_GLES
 	qglDisable( GL_TEXTURE_3D );
+#endif
 
 	GL_Cull( 0 );
 	GL_FrontFace( 0 );
@@ -1040,7 +1065,7 @@ init_qgl:
 		QGL_Shutdown();
 		return rserr_unknown;
 	}
-
+#ifndef HAVE_GLES
 	// create the window and set up the context
 	err = GLimp_SetMode( x, y, width, height, fullScreen, wideScreen );
 	if( err != rserr_ok )
@@ -1049,7 +1074,7 @@ init_qgl:
 		Com_Printf( "ref_gl::R_Init() - could not GLimp_SetMode()\n" );
 		return err;
 	}
-
+#endif
 	if( r_ignorehwgamma->integer )
 		glState.hwGamma = qfalse;
 	else
@@ -1064,8 +1089,13 @@ init_qgl:
 	glConfig.rendererString = (const char *)qglGetString( GL_RENDERER );
 	glConfig.versionString = (const char *)qglGetString( GL_VERSION );
 	glConfig.extensionsString = (const char *)qglGetString( GL_EXTENSIONS );
+#ifdef HAVE_GLES
+	glConfig.glwExtensionsString = NULL;
+	glConfig.shadingLanguageVersionString = NULL;
+#else
 	glConfig.glwExtensionsString = (const char *)qglGetGLWExtensionsString ();
 	glConfig.shadingLanguageVersionString = (const char *)qglGetString( GL_SHADING_LANGUAGE_VERSION_ARB );
+#endif
 
 	if( !glConfig.vendorString ) glConfig.vendorString = "";
 	if( !glConfig.rendererString ) glConfig.rendererString = "";
@@ -1129,7 +1159,9 @@ init_qgl:
 */
 rserr_t R_SetMode( int x, int y, int width, int height, qboolean fullScreen, qboolean wideScreen )
 {
+#ifndef HAVE_GLES
 	return GLimp_SetMode( x, y, width, height, fullScreen, wideScreen );
+#endif
 }
 
 /*

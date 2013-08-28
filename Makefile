@@ -8,6 +8,10 @@ DEBUG_BUILD?=NO
 # use mingw and build Windows binaries?
 USE_MINGW?=NO
 
+# use a Pandora?
+USE_PANDORA=YES
+
+
 # client and dedicated server binaries
 BUILD_CLIENT?=YES
 BUILD_SERVER?=YES
@@ -55,8 +59,12 @@ LXX?=g++
 AR=ar
 RANLIB=ranlib
 
+ifeq ($(USE_PANDORA),YES)
+BASE_ARCH:=arm
+else
 # this nice line comes from the linux kernel makefile
 BASE_ARCH:=$(shell uname -m | sed -e s/i.86/i386/ -e s/sun4u/sparc/ -e s/sparc64/sparc/ -e s/arm.*/arm/ -e s/sa110/arm/ -e s/alpha/axp/)
+endif
 OS=$(shell uname)
 
 ifeq ($(OS),FreeBSD)
@@ -96,7 +104,11 @@ BUILDDIRS=$(BUILDDIR)/client $(BUILDDIR)/ded $(BUILDDIR)/cgame $(BUILDDIR)/game 
 
 ###########################################################
 # Angelwrap stuff
+ifeq ($(USE_PANDORA),YES)
+ANGELSCRIPT_DIR=angelscript
+else
 ANGELSCRIPT_DIR=../libsrcs/angelscript/angelSVN/sdk/angelscript
+endif
 ifeq ($(USE_MINGW),YES)
 ifeq ($(CROSS_COMPILE),YES)
 ANGELSCRIPT_PROJECT_DIR=$(ANGELSCRIPT_DIR)/projects/gnuc
@@ -196,7 +208,13 @@ LOCALBASE?=/usr/local
 X11BASE?=/usr/X11R6
 
 CFLAGS_COMMON=$(CFLAGS) -pipe -I. -I$(LOCALBASE)/include -I$(X11BASE)/include -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -Wall -Wno-unused-function -fvisibility=hidden
+ifeq ($(USE_PANDORA),YES)
+CFLAGS_COMMON+=-DPANDORA -DHAVE_GLES -DARM -DNEON -DCROUCH
+CFLAGS_COMMON+=-I/mnt/utmp/codeblocks/usr/include/libpng12
+CFLAGS_RELEASE=-Ofast -fno-strict-aliasing -ffast-math -funroll-loops -DNDEBUG -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp -fsigned-char
+else
 CFLAGS_RELEASE=-O2 -fno-strict-aliasing -ffast-math -funroll-loops -DNDEBUG -msse2
+endif
 CFLAGS_DEBUG=-O0 -ggdb -D_DEBUG
 ifeq ($(DEBUG_BUILD),YES)
 CFLAGS_COMMON+=$(CFLAGS_DEBUG)
@@ -229,7 +247,12 @@ else
 LIB=lib
 endif
 
+ifeq ($(USE_PANDORA),YES)
+LDFLAGS_CLIENT=-ljpeg -lpng12 -lz -L$(X11BASE)/$(LIB) -lX11 -lXext -lXxf86dga -lXxf86vm -lXinerama -lXrandr -lrt $(shell curl-config --libs)
+LDFLAGS_CLIENT+=-lEGL -lGLES_CM
+else
 LDFLAGS_CLIENT=-ljpeg -lpng -lz -L$(X11BASE)/$(LIB) -lX11 -lXext -lXxf86dga -lXxf86vm -lXinerama -lXrandr -lrt $(shell curl-config --libs)
+endif
 LDFLAGS_DED=-lz $(shell curl-config --libs)
 LDFLAGS_MODULE=-shared
 LDFLAGS_TV_SERVER=-lz $(shell curl-config --libs)

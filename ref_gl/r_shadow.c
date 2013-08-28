@@ -153,10 +153,12 @@ qboolean R_DeformVPlanarShadowParams( vec3_t planenormal, float *planedist, vec3
 */
 void R_PlanarShadowPass( int state )
 {
+#ifndef HAVE_GLES
 	GL_EnableTexGen( GL_S, 0 );
 	GL_EnableTexGen( GL_T, 0 );
 	GL_EnableTexGen( GL_R, 0 );
 	GL_EnableTexGen( GL_Q, 0 );
+#endif
 	GL_SetTexCoordArrayMode( 0 );
 
 	GL_SetState( state );

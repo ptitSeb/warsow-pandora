@@ -23,6 +23,12 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #include "../qcommon/qcommon.h"
 
+#ifdef HAVE_GLES
+#include "qgl_linked.h"
+#define GL_RGBA4				0x8056
+#define GL_RGB5					0x8050
+#endif
+
 #include "r_glimp.h"
 #include "r_public.h"
 

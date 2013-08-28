@@ -38,7 +38,6 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 	AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 	CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-
 	The Mesa OpenGL headers were originally adapted in 2001 for dynamic OpenGL
 	binding by Zephaniah E. Hull and later rewritten by Joseph Carter.  This
 	version of the file is for the generation 3 DynGL code, and has been
@@ -59,6 +58,11 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #ifndef __QGL_H__
 #define __QGL_H__
 
+#ifdef HAVE_GLES
+#include <GLES/gl.h>
+#include <GLES/glext.h>
+#else
+
 #define GL_GLEXT_LEGACY
 #define GLX_GLXEXT_LEGACY
 
@@ -77,6 +81,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
 #undef GL_GLEXT_LEGACY
 #undef GLX_GLXEXT_LEGACY
+#endif
 
 QGL_EXTERN	qboolean	QGL_Init( const char *dllname );
 QGL_EXTERN	void		QGL_Shutdown( void );
@@ -87,6 +92,7 @@ QGL_EXTERN	const char	*(*qglGetGLWExtensionsString)( void );
 /*
 ** extension constants
 */
+#ifndef HAVE_GLES
 
 #define GL_TEXTURE0_SGIS									0x835E
 #define GL_TEXTURE1_SGIS									0x835F
@@ -456,6 +462,7 @@ typedef unsigned int GLhandleARB;
 #define QGL_FUNC
 #endif
 
+#ifndef HAVE_GLES
 // WGL Functions
 QGL_WGL(PROC, wglGetProcAddress, (LPCSTR));
 QGL_WGL(int, wglChoosePixelFormat, (HDC, CONST PIXELFORMATDESCRIPTOR *));
@@ -656,3 +663,6 @@ QGL_WGL_EXT(BOOL, wglGetDeviceGammaRamp3DFX, (HDC, WORD *));
 QGL_WGL_EXT(BOOL, wglSetDeviceGammaRamp3DFX, (HDC, WORD *));
 
 // GLX_EXT Functions
+
+#endif	//HAVE_GLES
+#endif	//__QGL_H__

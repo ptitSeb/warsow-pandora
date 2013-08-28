@@ -68,16 +68,19 @@ void GL_SelectTexture( int tmu )
 		return;
 
 	glState.currentTMU = tmu;
-
+#ifndef HAVE_GLES
 	if( qglActiveTextureARB )
+#endif
 	{
 		qglActiveTextureARB( tmu + GL_TEXTURE0_ARB );
 		qglClientActiveTextureARB( tmu + GL_TEXTURE0_ARB );
 	}
+#ifndef HAVE_GLES
 	else if( qglSelectTextureSGIS )
 	{
 		qglSelectTextureSGIS( tmu + GL_TEXTURE0_SGIS );
 	}
+#endif
 }
 
 void GL_TexEnv( GLenum mode )
@@ -101,8 +104,10 @@ void GL_Bind( int tmu, image_t *tex )
 	glState.currentTextures[tmu] = tex->texnum;
 	if( tex->flags & IT_CUBEMAP )
 		qglBindTexture( GL_TEXTURE_CUBE_MAP_ARB, tex->texnum );
+#ifndef HAVE_GLES
 	else if( tex->depth != 1 )
 		qglBindTexture( GL_TEXTURE_3D, tex->texnum );
+#endif
 	else
 		qglBindTexture( GL_TEXTURE_2D, tex->texnum );
 }
@@ -126,6 +131,9 @@ void GL_LoadIdentityTexMatrix( void )
 
 void GL_EnableTexGen( int coord, int mode )
 {
+#ifdef HAVE_GLES
+//*TODO*
+#else
 	int tmu = glState.currentTMU;
 	int bit, gen;
 
@@ -151,6 +159,7 @@ void GL_EnableTexGen( int coord, int mode )
 			glState.genSTEnabled[tmu] &= ~bit;
 		}
 	}
+#endif
 }
 
 void GL_SetTexCoordArrayMode( int mode )
@@ -266,9 +275,11 @@ void R_AnisotropicFilter( int value )
 		}
 
 		GL_Bind( 0, glt );
+#ifndef HAVE_GLES
 		if( glt->upload_depth != 1 )
 			qglTexParameteri( GL_TEXTURE_3D, GL_TEXTURE_MAX_ANISOTROPY_EXT, gl_anisotropic_filter );
 		else
+#endif
 			qglTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, gl_anisotropic_filter );
 	}
 }
@@ -408,6 +419,104 @@ static void R_SwapBlueRed( qbyte *data, int width, int height, int samples )
 		// data[0] ^= data[2];
 	}
 }
+
+#ifdef HAVE_GLES
+// helper function for GLES format conversions
+qbyte * gles_convertRGB(qbyte * data, int width, int height)
+{
+	qbyte * temp = (qbyte *) Mem_Alloc( r_texturesPool, width*height*3);
+	qbyte *src = data;
+	qbyte *dst = temp;
+	int i,j;
+	
+	for (i=0; i<width*height; i++) {
+		for (j=0; j<3; j++)
+			*(dst++) = *(src++);
+		src++;
+	}
+	
+	return temp;
+}
+qbyte *  gles_convertRGBA4(qbyte * data, int width, int height)
+{
+	qbyte * temp = (qbyte *) Mem_Alloc( r_texturesPool, width*height*2);
+	int i;
+	
+    unsigned int * input = ( unsigned int *)(data);
+    unsigned short* output = (unsigned short*)(temp);
+    for (i = 0; i < width*height; i++) {
+        unsigned int pixel = input[i];
+        // Unpack the source data as 8 bit values
+        unsigned int r = pixel & 0xff;
+        unsigned int g = (pixel >> 8) & 0xff;
+        unsigned int b = (pixel >> 16) & 0xff;
+        unsigned int a = (pixel >> 24) & 0xff;
+        // Convert to 4 bit vales
+        r >>= 4; g >>= 4; b >>= 4; a >>= 4;
+        output[i] = r << 12 | g << 8 | b << 4 | a;
+	}
+	return temp;
+}
+qbyte * gles_convertRGB5(qbyte * data, int width, int height)
+{
+	qbyte * temp = (qbyte *) Mem_Alloc( r_texturesPool, width*height*2);
+	qbyte *src = data;
+	qbyte *dst = temp;
+	qbyte r,g,b;
+	int i;
+	
+    unsigned int * input = ( unsigned int *)(data);
+    unsigned short* output = (unsigned short*)(temp);
+    for (i = 0; i < width*height; i++) {
+        unsigned int pixel = input[i];
+        // Unpack the source data as 8 bit values
+        unsigned int r = pixel & 0xff;
+        unsigned int g = (pixel >> 8) & 0xff;
+        unsigned int b = (pixel >> 16) & 0xff;
+        // Convert to 4 bit vales
+        r >>= 3; g >>= 2; b >>= 3; 
+        output[i] = r << 11 | g << 5 | b;
+	}
+	return temp;
+}
+qbyte * gles_convertLuminance(qbyte * data, int width, int height)
+{
+	qbyte * temp = (qbyte *) Mem_Alloc( r_texturesPool, width*height);
+	qbyte *src = data;
+	qbyte *dst = temp;
+	qbyte r,g,b;
+	int i;
+	
+    unsigned int * input = ( unsigned int *)(data);
+    qbyte* output = (qbyte*)(temp);
+    for (i = 0; i < width*height; i++) {
+        unsigned int pixel = input[i];
+        // Unpack the source data as 8 bit values
+        unsigned int r = pixel & 0xff;
+        output[i] = r;
+	}
+	return temp;
+}
+qbyte * gles_convertLuminanceAlpha(qbyte * data, int width, int height)
+{
+	qbyte * temp = (qbyte *) Mem_Alloc( r_texturesPool, width*height*2);
+	qbyte *src = data;
+	qbyte *dst = temp;
+	qbyte r,g,b;
+	int i;
+	
+    unsigned int * input = ( unsigned int *)(data);
+    unsigned short* output = (unsigned short*)(temp);
+    for (i = 0; i < width*height; i++) {
+        unsigned int pixel = input[i];
+        // Unpack the source data as 8 bit values
+        unsigned int r = pixel & 0xff;
+        unsigned int a = (pixel >> 24) & 0xff;
+        output[i] = r | a<<8;
+	}
+	return temp;
+}
+#endif
 
 /*
 =================================================================
@@ -1989,27 +2098,31 @@ static void R_MipMap( qbyte *in, int width, int height, int samples )
 static int R_TextureFormat( int samples, qboolean noCompress )
 {
 	int bits = r_texturebits->integer;
-
+#ifndef HAVE_GLES
 	if( glConfig.ext.texture_compression && !noCompress )
 	{
 		if( samples == 3 )
 			return GL_COMPRESSED_RGB_ARB;
 		return GL_COMPRESSED_RGBA_ARB;
 	}
-
+#endif
 	if( samples == 3 )
 	{
 		if( bits == 16 )
 			return GL_RGB5;
+#ifndef HAVE_GLES
 		else if( bits == 32 )
 			return GL_RGB8;
+#endif
 		return GL_RGB;
 	}
 
 	if( bits == 16 )
 		return GL_RGBA4;
+#ifndef HAVE_GLES
 	else if( bits == 32 )
 		return GL_RGBA8;
+#endif
 	return GL_RGBA;
 }
 
@@ -2079,13 +2192,17 @@ void R_Upload32( qbyte **data, int width, int height, int flags, int *upload_wid
 	{
 		*samples = 1;
 	}
-
+#ifdef HAVE_GLES
+//*TODO*
+#else
 	if( flags & IT_DEPTH )
 	{
 		comp = GL_DEPTH_COMPONENT;
 		format = GL_DEPTH_COMPONENT;
 	}
-	else if( flags & IT_LUMINANCE )
+	else 
+#endif
+	if( flags & IT_LUMINANCE )
 	{
 		comp = GL_LUMINANCE;
 		format = GL_LUMINANCE;
@@ -2094,9 +2211,17 @@ void R_Upload32( qbyte **data, int width, int height, int flags, int *upload_wid
 	{
 		comp = R_TextureFormat( *samples, flags & IT_NOCOMPRESS );
 		if( inSamples == 4 )
+#ifdef HAVE_GLES
+			format = GL_RGBA;
+#else
 			format = ( flags & IT_BGRA ? GL_BGRA_EXT : GL_RGBA );
+#endif
 		else
+#ifdef HAVE_GLES
+			format = GL_RGB;
+#else
 			format = ( flags & IT_BGRA ? GL_BGR_EXT : GL_RGB );
+#endif
 	}
 
 	if( flags & IT_NOFILTERING )
@@ -2248,11 +2373,20 @@ void R_Upload32_3D_Fast( qbyte **data, int width, int height, int depth, int fla
 	{
 		comp = R_TextureFormat( *samples, flags & IT_NOCOMPRESS );
 		if( *samples == 4 )
+#ifdef HAVE_GLES
+			format = GL_RGBA;
+#else
 			format = ( flags & IT_BGRA ? GL_BGRA_EXT : GL_RGBA );
+#endif
 		else
+#ifdef HAVE_GLES
+			format = GL_RGB;
+#else
 			format = ( flags & IT_BGRA ? GL_BGR_EXT : GL_RGB );
+#endif
 	}
 
+#ifndef HAVE_GLES
 	if( flags & IT_NOFILTERING )
 	{
 		qglTexParameteri( GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
@@ -2299,6 +2433,7 @@ void R_Upload32_3D_Fast( qbyte **data, int width, int height, int depth, int fla
 		qglTexSubImage3D( GL_TEXTURE_3D, 0, 0, 0, 0, scaledWidth, scaledHeight, scaledDepth, format, GL_UNSIGNED_BYTE, data[0] );
 	else
 		qglTexImage3D( GL_TEXTURE_3D, 0, comp, scaledWidth, scaledHeight, scaledDepth, 0, format, GL_UNSIGNED_BYTE, data[0] );
+#endif
 }
 
 /*
@@ -2739,7 +2874,12 @@ static void R_ScreenShot( const char *name, qboolean silent )
 	else
 	{
 		buffer = Mem_Alloc( r_texturesPool, 18 + glState.width * glState.height * 3 );
+#ifdef HAVE_GLES
+//*TODO*	Probably wrong here!
+		qglReadPixels( 0, 0, glState.width, glState.height, GL_RGB, GL_UNSIGNED_BYTE, buffer + 18 );
+#else
 		qglReadPixels( 0, 0, glState.width, glState.height, glConfig.ext.bgra ? GL_BGR_EXT : GL_RGB, GL_UNSIGNED_BYTE, buffer + 18 );
+#endif
 
 		if( WriteTGA( checkname + gamepath_offset, buffer, glState.width, glState.height, glConfig.ext.bgra ) && !silent )
 			Com_Printf( "Wrote %s\n", checkname );
@@ -2809,7 +2949,11 @@ void R_EnvShot_f( void )
 	{
 		R_DrawCubemapView( r_lastRefdef.vieworg, cubemapShots[i].angles, size );
 
+#ifdef HAVE_GLES
+		qglReadPixels( 0, glState.height - size, size, size, GL_RGB, GL_UNSIGNED_BYTE, buffer );
+#else
 		qglReadPixels( 0, glState.height - size, size, size, glConfig.ext.bgra ? GL_BGR_EXT : GL_RGB, GL_UNSIGNED_BYTE, buffer );
+#endif
 
 		R_FlipTexture( buffer, bufferFlipped + 18, size, size, 3, ( cubemapShots[i].flags & IT_FLIPX ), ( cubemapShots[i].flags & IT_FLIPY ), ( cubemapShots[i].flags & IT_FLIPDIAGONAL ) );
 
@@ -2882,7 +3026,11 @@ void R_WriteAviFrame( int frame, qboolean scissor )
 	else
 	{
 		COM_DefaultExtension( checkname, ".tga", checkname_size );
+#ifdef HAVE_GLES
+		qglReadPixels( x, y, w, h, GL_RGB, GL_UNSIGNED_BYTE, r_aviBuffer + 18 );
+#else
 		qglReadPixels( x, y, w, h, glConfig.ext.bgra ? GL_BGR_EXT : GL_RGB, GL_UNSIGNED_BYTE, r_aviBuffer + 18 );
+#endif
 		WriteTGA( checkname, r_aviBuffer, w, h, glConfig.ext.bgra );
 	}
 
@@ -3242,7 +3390,6 @@ void R_InitShadowmapTexture( image_t **texture, int id, int screenWidth, int scr
 
 	R_InitScreenTexture( texture, "r_shadowmap", NULL, id, screenWidth, screenHeight, size, IT_SHADOWMAP|IT_FRAMEBUFFER|flags, 1, screenLimit );
 }
-
 
 /*
 * R_FindPortalTextureSlot

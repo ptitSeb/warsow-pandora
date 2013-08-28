@@ -985,7 +985,9 @@ static void HandleEvents( void )
 				break;
 
 			case ConfigureNotify:
+		#ifndef HAVE_GLES
 				_NETWM_CHECK_FULLSCREEN();
+		#endif
 				break;
 
 			case PropertyNotify:
@@ -1024,12 +1026,16 @@ static void HandleEvents( void )
 				if( !focus && Cvar_Value( "vid_fullscreen" ) )
 				{
 					go_fullscreen_on_focus = qtrue;
+			#ifndef HAVE_GLES
 					_NETWM_SET_FULLSCREEN( qfalse );
+			#endif
 				}
 				else if( focus && go_fullscreen_on_focus )
 				{
 					go_fullscreen_on_focus = qfalse;
+			#ifndef HAVE_GLES
 					_NETWM_SET_FULLSCREEN( qtrue );
+			#endif
 				}
 			}
 		}

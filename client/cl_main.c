@@ -607,7 +607,9 @@ void CL_FreeClipboardData( char *data )
 */
 void CL_OpenURLInBrowser( const char *url )
 {
+#ifndef PANDORA
 	Sys_OpenURLInBrowser( url );
+#endif
 }
 
 /*
