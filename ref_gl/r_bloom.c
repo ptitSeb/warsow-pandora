@@ -221,6 +221,31 @@ void R_TouchBloomTextures( void )
 	}
 }
 
+#ifdef HAVE_GLES
+#define GL_QUADS	0x0007
+#define glBegin(a)	\
+ GLfloat tex[4*2];	\
+ GLfloat vtx[4*2];	\
+ GLboolean etex, evtx;	\
+ int idx=0;
+ 
+#define glTexCoord2f(a, b) tex[idx*2+0]=a; tex[idx*2+1]=b
+
+#define glVertex2f(a, b) vtx[idx*2+0]=a; vtx[idx*2+1]=b; idx++
+
+#define glEnd()	\
+ etex=glIsEnabled(GL_TEXTURE_COORD_ARRAY);	\
+ evtx=glIsEnabled(GL_VERTEX_ARRAY);			\
+ if (!evtx) glEnableClientState(GL_VERTEX_ARRAY);		\
+ if (!etex) glEnableClientState(GL_TEXTURE_COORD_ARRAY);	\
+ glVertexPointer(2, GL_FLOAT, 0, vtx); \
+ glTexCoordPointer(2, GL_FLOAT, 0, tex); \
+ glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);	\
+ if (!evtx) glDisableClientState(GL_VERTEX_ARRAY);		\
+ if (!etex) glDisableClientState(GL_TEXTURE_COORD_ARRAY)
+ 
+#endif
+
 /*
 * R_Bloom_SamplePass
 */
@@ -276,6 +301,14 @@ static void R_Bloom_DrawEffect( void )
 	qglVertex2f( curView_x+curView_width, curView_y );
 	qglEnd();
 }
+#ifdef HAVE_GLES
+#undef GL_QUADS
+#undef glBegin
+#undef glTexCoord2f
+#undef glVertex2f
+#undef glEnd
+#endif
+
 
 /*
 * R_Bloom_GeneratexDiamonds

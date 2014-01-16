@@ -71,7 +71,7 @@ extern void     (APIENTRY * qglMultiDrawElementsEXT) (GLenum, const GLsizei *, G
 #define qglColor4d glColor4d
 #define qglColor4dv glColor4dv
 #define qglColor4f glColor4f
-#define qglColor4fv glColor4fv
+#define qglColor4fv(a) glColor4f((a)[0], (a)[1], (a)[2], (a)[3])
 #define qglColor4i glColor4i
 #define qglColor4iv glColor4iv
 #define qglColor4s glColor4s

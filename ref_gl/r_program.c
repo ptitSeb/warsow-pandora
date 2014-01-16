@@ -138,10 +138,10 @@ void R_InitGLSLPrograms( void )
 
 	memset( r_glslprograms, 0, sizeof( r_glslprograms ) );
 	memset( r_glslprograms_hash, 0, sizeof( r_glslprograms_hash ) );
-
+	
 	if( !glConfig.ext.GLSL )
 		return;
-
+#ifndef HAVE_GLES
 	r_glslProgramsPool = Mem_AllocPool( NULL, "GLSL Programs" );
 
 	// register base programs
@@ -170,6 +170,7 @@ void R_InitGLSLPrograms( void )
 	}
 
 	R_PrecacheGLSLPrograms();
+#endif
 }
 
 /*
@@ -319,6 +320,7 @@ static char *R_GLSLProgramCopyString( const char *in )
 */
 static void R_DeleteGLSLProgram( glsl_program_t *program )
 {
+#ifndef HAVE_GLES
 	glsl_program_t *hash_next;
 
 	if( program->vertexShader )
@@ -344,6 +346,7 @@ static void R_DeleteGLSLProgram( glsl_program_t *program )
 	hash_next = program->hash_next;
 	memset( program, 0, sizeof( glsl_program_t ) );
 	program->hash_next = hash_next;
+#endif
 }
 
 /*
@@ -351,6 +354,7 @@ static void R_DeleteGLSLProgram( glsl_program_t *program )
 */
 static int R_CompileGLSLShader( int program, const char *programName, const char *shaderName, int shaderType, const char **strings, int numStrings )
 {
+#ifndef HAVE_GLES
 	int shader, compiled;
 
 	shader = qglCreateShaderObjectARB( (GLenum)shaderType );
@@ -379,6 +383,9 @@ static int R_CompileGLSLShader( int program, const char *programName, const char
 	qglAttachObjectARB( program, shader );
 
 	return shader;
+#else
+	return 0;
+#endif
 }
 
 /*
@@ -386,6 +393,7 @@ static int R_CompileGLSLShader( int program, const char *programName, const char
 */
 int R_FindGLSLProgram( const char *name )
 {
+#ifndef HAVE_GLES
 	int i;
 	glsl_program_t *program;
 
@@ -396,7 +404,7 @@ int R_FindGLSLProgram( const char *name )
 		if( !Q_stricmp( program->name, name ) )
 			return ( i+1 );
 	}
-
+#endif
 	return 0;
 }
 
@@ -2339,10 +2347,11 @@ int R_RegisterGLSLProgram( int type, const char *name, const char *string, const
 	const char **header;
 	const char *vertexShaderStrings[MAX_DEFINES_FEATURES+4];
 	const char *fragmentShaderStrings[MAX_DEFINES_FEATURES+4];
-
+#ifndef HAVE_GLES
 	if( !glConfig.ext.GLSL )
+#endif
 		return 0; // fail early
-
+#ifndef HAVE_GLES
 	if( type <= GLSL_PROGRAM_TYPE_NONE || type >= GLSL_PROGRAM_TYPE_MAXTYPE )
 		return 0;
 
@@ -2517,6 +2526,7 @@ done:
 	}
 
 	return ( program - r_glslprograms ) + 1;
+#endif	//HAVE_GLES
 }
 
 /*
@@ -2581,6 +2591,7 @@ void R_UpdateProgramUniforms( int elem, const vec3_t eyeOrigin,
 							 float projDistance, float offsetmappingScale, float glossExponent, 
 							 const qbyte *constColor, int overbrightBits, float shaderTime, const qbyte *entityColor )
 {
+#ifndef HAVE_GLES
 	glsl_program_t *program = r_glslprograms + elem - 1;
 	int overbrights = 1 << max(0, r_overbrightbits->integer);
 
@@ -2670,6 +2681,7 @@ void R_UpdateProgramUniforms( int elem, const vec3_t eyeOrigin,
 
 	if( program->locShaderTime >= 0 )
 		qglUniform1fARB( program->locShaderTime, shaderTime );
+#endif	//HAVE_GLES
 }
 
 /*
@@ -2688,13 +2700,14 @@ void R_UpdateProgramFogParams( int elem, byte_vec4_t color, float clearDist, flo
 	qglFogfv( GL_FOG_START, &fog_start );
 	qglFogfv( GL_FOG_END, &fog_end );
 	qglFogi( GL_FOG_MODE, GL_LINEAR );
-
+#ifndef HAVE_GLES
 	if( program->locFogPlane >= 0 )
 		qglUniform4fARB( program->locFogPlane, fogPlane->normal[0], fogPlane->normal[1], fogPlane->normal[2], fogPlane->dist );
 	if( program->locEyePlane >= 0 )
 		qglUniform4fARB( program->locEyePlane, eyePlane->normal[0], eyePlane->normal[1], eyePlane->normal[2], eyePlane->dist );
 	if( program->locEyeFogDist >= 0 )
 		qglUniform1fARB( program->locEyeFogDist, eyeFogDist );
+#endif
 }
 
 /*
@@ -2726,11 +2739,11 @@ unsigned int R_UpdateProgramLightsParams( int elem, const vec3_t entOrigin, vec3
 			VectorCopy( dlorigin, tvec );
 			Matrix_TransformVector( entAxis, tvec, dlorigin );
 		}
-
+#ifndef HAVE_GLES
 		qglUniform1fARB( program->locDynamicLightsRadius[n], dl->intensity );
 		qglUniform3fARB( program->locDynamicLightsPosition[n], dlorigin[0], dlorigin[1], dlorigin[2] );
 		qglUniform3fARB( program->locDynamicLightsDiffuse[n], dl->color[0] * colorScale, dl->color[1] * colorScale, dl->color[2] * colorScale );
-
+#endif
 		n++;
 	}
 
@@ -2738,8 +2751,10 @@ unsigned int R_UpdateProgramLightsParams( int elem, const vec3_t entOrigin, vec3
 		if( program->locDynamicLightsRadius[n] < 0 ) {
 			break;
 		}
+#ifndef HAVE_GLES
 		qglUniform1fARB( program->locDynamicLightsRadius[n], 1 );
 		qglUniform3fARB( program->locDynamicLightsDiffuse[n], 0, 0, 0 );
+#endif
 	}
 
 	return 0;
@@ -2750,8 +2765,8 @@ unsigned int R_UpdateProgramLightsParams( int elem, const vec3_t entOrigin, vec3
 */
 void R_UpdateProgramQ3AParams( int elem, float shaderTime, const vec3_t eyeOrigin, const vec3_t entDist, const qbyte *constColor, int overbrightBits )
 {
+#ifndef HAVE_GLES
 	glsl_program_t *program = r_glslprograms + elem - 1;
-
 	if( program->locEyeOrigin >= 0 && eyeOrigin )
 		qglUniform3fARB( program->locEyeOrigin, eyeOrigin[0], eyeOrigin[1], eyeOrigin[2] );
 	if( program->locEntDist >= 0 && entDist )
@@ -2762,6 +2777,7 @@ void R_UpdateProgramQ3AParams( int elem, float shaderTime, const vec3_t eyeOrigi
 		qglUniform1fARB( program->locOverbrightScale, 1.0 / (1 << overbrightBits) );
 	if( program->locShaderTime >= 0 )
 		qglUniform1fARB( program->locShaderTime, shaderTime );
+#endif
 }
 
 /*
@@ -2769,6 +2785,7 @@ void R_UpdateProgramQ3AParams( int elem, float shaderTime, const vec3_t eyeOrigi
 */
 void R_UpdateProgramPlanarShadowParams( int elem, float shaderTime, const vec3_t planeNormal, float planeDist, const vec3_t lightDir )
 {
+#ifndef HAVE_GLES
 	glsl_program_t *program = r_glslprograms + elem - 1;
 
 	if( program->locPlaneNormal >= 0 )
@@ -2781,6 +2798,7 @@ void R_UpdateProgramPlanarShadowParams( int elem, float shaderTime, const vec3_t
 
 	if( program->locShaderTime >= 0 )
 		qglUniform1fARB( program->locShaderTime, shaderTime );
+#endif
 }
 
 /*
@@ -2788,6 +2806,7 @@ void R_UpdateProgramPlanarShadowParams( int elem, float shaderTime, const vec3_t
 */
 void R_UpdateProgramCellshadeParams( int elem, float shaderTime, const vec3_t eyeOrigin, const vec3_t entDist, const qbyte *constColor, int overbrightBits, const qbyte *entityColor, mat4x4_t reflectionMatrix )
 {
+#ifndef HAVE_GLES
 	glsl_program_t *program = r_glslprograms + elem - 1;
 
 	if( program->locEyeOrigin >= 0 && eyeOrigin )
@@ -2804,6 +2823,7 @@ void R_UpdateProgramCellshadeParams( int elem, float shaderTime, const vec3_t ey
 		qglUniform1fARB( program->locShaderTime, shaderTime );
 	if( program->locReflectionMatrix >= 0 )
 		qglUniformMatrix4fvARB( program->locReflectionMatrix, 1, GL_FALSE, reflectionMatrix );
+#endif
 }
 
 /*
@@ -2811,6 +2831,7 @@ void R_UpdateProgramCellshadeParams( int elem, float shaderTime, const vec3_t ey
 */
 void R_UpdateProgramShadowmapUniforms( int elem, vec3_t entityAxis[3], int numShadows, const shadowGroup_t **groups )
 {
+#ifndef HAVE_GLES
 	int i;
 	const shadowGroup_t *group;
 	glsl_program_t *program = r_glslprograms + elem - 1;
@@ -2842,6 +2863,7 @@ void R_UpdateProgramShadowmapUniforms( int elem, vec3_t entityAxis[3], int numSh
 			qglUniform4fARB( program->locShadowmapTextureParams[i], TexWidth, TexHeight, TexWidth ? 1.0 / TexWidth : 1.0, TexHeight ? 1.0 / TexHeight : 1.0 );
 		}
 	}
+#endif
 }
 
 /*
@@ -2851,6 +2873,7 @@ void R_UpdateProgramShadowmapUniforms( int elem, vec3_t entityAxis[3], int numSh
 */
 void R_UpdateProgramBonesParams( int elem, unsigned int numBones, dualquat_t *animDualQuat )
 {
+#ifndef HAVE_GLES
 	unsigned int i, j;
 	glsl_program_t *program = r_glslprograms + elem - 1;
 
@@ -2867,6 +2890,7 @@ void R_UpdateProgramBonesParams( int elem, unsigned int numBones, dualquat_t *an
 		qglUniform4fvARB( program->locDualQuats[j++], 1, &animDualQuat[i][0] ); // real
 		qglUniform4fvARB( program->locDualQuats[j++], 1, &animDualQuat[i][4] ); // dual
 	}
+#endif
 }
 
 /*
@@ -2874,12 +2898,14 @@ void R_UpdateProgramBonesParams( int elem, unsigned int numBones, dualquat_t *an
 */
 void R_UpdateDrawFlatParams( int elem, const vec3_t wallColor, const vec3_t floorColor )
 {
+#ifndef HAVE_GLES
 	glsl_program_t *program = r_glslprograms + elem - 1;
 
 	if( program->locWallColor >= 0 )
 		qglUniform3fARB( program->locWallColor, wallColor[0], wallColor[1], wallColor[2] );
 	if( program->locFloorColor >= 0 )
 		qglUniform3fARB( program->locFloorColor, floorColor[0], floorColor[1], floorColor[2] );
+#endif
 }
 
 /*
@@ -2887,6 +2913,7 @@ void R_UpdateDrawFlatParams( int elem, const vec3_t wallColor, const vec3_t floo
 */
 static void R_GetProgramUniformLocations( glsl_program_t *program )
 {
+#ifndef HAVE_GLES
 	unsigned int i;
 	int		locBaseTexture,
 			locNormalmapTexture,
@@ -3062,6 +3089,7 @@ static void R_GetProgramUniformLocations( glsl_program_t *program )
 		if( locLightmapTexture[i] >= 0 )
 			qglUniform1iARB( locLightmapTexture[i], i+4 );
 	}
+#endif	//HAVE_GLES
 }
 
 /*
@@ -3069,8 +3097,10 @@ static void R_GetProgramUniformLocations( glsl_program_t *program )
 */
 static void R_BindProgramAttrbibutesLocations( glsl_program_t *program )
 {
+#ifndef HAVE_GLES
 	qglBindAttribLocationARB( program->object, GLSL_ATTRIB_BONESINDICES, "BonesIndices" );
 	qglBindAttribLocationARB( program->object, GLSL_ATTRIB_BONESWEIGHTS, "BonesWeights" );
+#endif
 }
 
 /*
@@ -3078,6 +3108,7 @@ static void R_BindProgramAttrbibutesLocations( glsl_program_t *program )
 */
 void R_ShutdownGLSLPrograms( void )
 {
+#ifndef HAVE_GLES
 	int i;
 	glsl_program_t *program;
 
@@ -3092,6 +3123,6 @@ void R_ShutdownGLSLPrograms( void )
 		R_DeleteGLSLProgram( program );
 
 	Mem_FreePool( &r_glslProgramsPool );
-
+#endif
 	r_numglslprograms = 0;
 }

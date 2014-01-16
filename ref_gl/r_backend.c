@@ -514,6 +514,7 @@ void R_BackendEndFrame( void )
 */
 static void R_LockArrays( int numverts )
 {
+#ifndef HAVE_GLES
 	if( r_bufferBound || r_arraysLocked )
 		return;
 
@@ -562,6 +563,7 @@ static void R_LockArrays( int numverts )
 
 		r_arraysLocked = qtrue;
 	}
+#endif	//HAVE_GLES
 }
 
 /*
@@ -569,6 +571,7 @@ static void R_LockArrays( int numverts )
 */
 static void R_UnlockArrays( void )
 {
+#ifndef HAVE_GLES
 	if( r_bufferBound )
 	{
 		if( r_bonesEnabled ) {
@@ -600,6 +603,7 @@ static void R_UnlockArrays( void )
 
 		r_arraysLocked = qfalse;
 	}
+#endif
 }
 
 /*
@@ -690,10 +694,12 @@ void R_FlushArrays( void )
 */
 static inline void GL_DisableAllTexGens( void )
 {
+#ifndef HAVE_GLES
 	GL_EnableTexGen( GL_S, 0 );
 	GL_EnableTexGen( GL_T, 0 );
 	GL_EnableTexGen( GL_R, 0 );
 	GL_EnableTexGen( GL_Q, 0 );
+#endif
 }
 
 /*
@@ -709,7 +715,9 @@ static void R_CleanUpTextureUnits( int last )
 		GL_SetTexCoordArrayMode( 0 );
 
 		qglDisable( GL_TEXTURE_2D );
+		#ifndef HAVE_GLES
 		qglDisable( GL_TEXTURE_3D );
+		#endif
 		GL_SelectTexture( i - 1 );
 	}
 }
@@ -1234,7 +1242,7 @@ qboolean R_VertexTCBase( const shaderpass_t *pass, int unit, mat4x4_t matrix, r_
 				*programFeatures |= GLSL_COMMON_APPLY_TC_GEN_VECTOR;
 
 			GL_SetTexCoordArrayMode( 0 );
-
+#ifndef HAVE_GLES
 			GL_EnableTexGen( GL_S, GL_OBJECT_LINEAR );
 			GL_EnableTexGen( GL_T, GL_OBJECT_LINEAR );
 			GL_EnableTexGen( GL_R, 0 );
@@ -1242,6 +1250,7 @@ qboolean R_VertexTCBase( const shaderpass_t *pass, int unit, mat4x4_t matrix, r_
 
 			qglTexGenfv( GL_S, GL_OBJECT_PLANE, genVector[0] );
 			qglTexGenfv( GL_T, GL_OBJECT_PLANE, genVector[1] );
+#endif
 			return qfalse;
 		}
 	case TC_GEN_PROJECTION:
@@ -1271,7 +1280,7 @@ qboolean R_VertexTCBase( const shaderpass_t *pass, int unit, mat4x4_t matrix, r_
 				*programFeatures |= GLSL_COMMON_APPLY_TC_GEN_VECTOR;
 
 			GL_SetTexCoordArrayMode( 0 );
-
+#ifndef HAVE_GLES
 			GL_EnableTexGen( GL_S, GL_OBJECT_LINEAR );
 			GL_EnableTexGen( GL_T, GL_OBJECT_LINEAR );
 			GL_EnableTexGen( GL_R, GL_OBJECT_LINEAR );
@@ -1281,6 +1290,7 @@ qboolean R_VertexTCBase( const shaderpass_t *pass, int unit, mat4x4_t matrix, r_
 			qglTexGenfv( GL_T, GL_OBJECT_PLANE, genVector[1] );
 			qglTexGenfv( GL_R, GL_OBJECT_PLANE, genVector[2] );
 			qglTexGenfv( GL_Q, GL_OBJECT_PLANE, genVector[3] );
+#endif
 			return qfalse;
 		}
 
@@ -1290,11 +1300,12 @@ qboolean R_VertexTCBase( const shaderpass_t *pass, int unit, mat4x4_t matrix, r_
 	case TC_GEN_REFLECTION:
 		if( programFeatures )
 			*programFeatures |= GLSL_COMMON_APPLY_TC_GEN_REFLECTION;
-
+#ifndef HAVE_GLES
 		GL_EnableTexGen( GL_S, GL_REFLECTION_MAP_ARB );
 		GL_EnableTexGen( GL_T, GL_REFLECTION_MAP_ARB );
 		GL_EnableTexGen( GL_R, GL_REFLECTION_MAP_ARB );
 		GL_EnableTexGen( GL_Q, 0 );
+#endif
 		return qtrue;
 
 	case TC_GEN_FOG:
@@ -1503,11 +1514,15 @@ void R_BindShaderpass( const shaderpass_t *pass, image_t *tex, int unit, r_glslf
 	if( !pass->program_type ) {
 		if( tex->depth > 1 ) {
 			qglDisable( GL_TEXTURE_2D );
+			#ifndef HAVE_GLES
 			qglEnable( GL_TEXTURE_3D );
+			#endif
 		}
 		else {
 			qglEnable( GL_TEXTURE_2D );
+			#ifndef HAVE_GLES
 			qglDisable( GL_TEXTURE_3D );
+			#endif
 		}
 	}
 
@@ -2892,7 +2907,9 @@ void R_BackendCleanUpTextureUnits( void )
 	GL_SetTexCoordArrayMode( 0 );
 
 	qglEnable( GL_TEXTURE_2D );
+	#ifndef HAVE_GLES
 	qglDisable( GL_TEXTURE_3D );
+	#endif
 }
 
 /*
@@ -2924,8 +2941,10 @@ void R_BackendBeginTriangleOutlines( void )
 	GL_Cull( 0 );
 	GL_SetState( GLSTATE_NO_DEPTH_TEST );
 	qglDisable( GL_TEXTURE_2D );
+	#ifndef HAVE_GLES
 	qglDisable( GL_TEXTURE_3D );
 	qglPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+	#endif
 }
 
 /*
@@ -2937,7 +2956,9 @@ void R_BackendEndTriangleOutlines( void )
 	qglColor4fv( colorWhite );
 	GL_SetState( 0 );
 	qglEnable( GL_TEXTURE_2D );
+	#ifndef HAVE_GLES
 	qglPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+	#endif
 }
 
 /*

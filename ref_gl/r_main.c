@@ -329,9 +329,12 @@ void GL_FrontFace( int front )
 */
 void GL_BindBuffer( int target, int buffer )
 {
+#ifndef HAVE_GLES
 	if( !glConfig.ext.vertex_buffer_object )
+#endif
 		return;
-
+		
+#ifndef HAVE_GLES
 	if( target == GL_ARRAY_BUFFER_ARB )
 	{
 		if( buffer != glState.currentArrayVBO )
@@ -348,6 +351,7 @@ void GL_BindBuffer( int target, int buffer )
 			glState.currentElemArrayVBO = buffer;
 		}
 	}
+#endif
 }
 
 /*
@@ -364,6 +368,7 @@ qboolean GL_IsAlphaBlending( int blendsrc, int blenddst )
 */
 void GL_EnableVertexAttrib( int index, qboolean enable )
 {
+#ifndef HAVE_GLES
 	unsigned int bit;
 	unsigned int diff;
 
@@ -381,6 +386,7 @@ void GL_EnableVertexAttrib( int index, qboolean enable )
 		glState.vertexAttribEnabled &= ~bit;
 		qglDisableVertexAttribArrayARB( index );
 	}
+#endif
 }
 
 /*
@@ -1159,7 +1165,28 @@ void R_DrawStretchPic( int x, int y, int w, int h, float s1, float t1, float s2,
 {
 	R_DrawRotatedStretchPic( x, y, w, h, s1, t1, s2, t2, 0, color, shader );
 }
-
+#ifdef HAVE_GLES
+#define GL_QUADS	GL_TRIANGLE_STRIP
+#define glBegin(a)	\
+ GLfloat tex[4*2];	\
+ GLfloat vtx[4*2];	\
+ GLboolean etex, evtx;	\
+ GLenum what=a;		\
+ int gles_tex=0;	\
+ int idx=0;
+#define glTexCoord2f(a, b) gles_tex=1; tex[idx*2+0]=a; tex[idx*2+1]=b
+#define glVertex2f(a, b) vtx[idx*2+0]=a; vtx[idx*2+1]=b; idx++
+#define glEnd()	\
+ etex=glIsEnabled(GL_TEXTURE_COORD_ARRAY);	\
+ evtx=glIsEnabled(GL_VERTEX_ARRAY);			\
+ if (!evtx) glEnableClientState(GL_VERTEX_ARRAY);		\
+ if (gles_tex) if (!etex) glEnableClientState(GL_TEXTURE_COORD_ARRAY);	\
+ glVertexPointer(2, GL_FLOAT, 0, vtx); \
+ if (gles_tex) glTexCoordPointer(2, GL_FLOAT, 0, tex); \
+ glDrawArrays(what, 0, idx);	\
+ if (!evtx) glDisableClientState(GL_VERTEX_ARRAY);		\
+ if (gles_tex) if (!etex) glDisableClientState(GL_TEXTURE_COORD_ARRAY)
+#endif
 /*
 * R_DrawStretchRaw
 */
@@ -1250,7 +1277,36 @@ static void R_PolyBlend( void )
 
 	qglColor4f( 1, 1, 1, 1 );
 }
+#ifdef HAVE_GLES
+#undef GL_QUADS
+#undef glBegin
+#undef glTexCoord2f
+#undef glVertex2f
+#undef glEnd
+#endif
 
+#ifdef HAVE_GLES
+#define GL_QUADS	GL_TRIANGLE_STRIP
+#define glBegin(a)	\
+ GLfloat col[4*256];	\
+ GLfloat vtx[2*256];	\
+ GLfloat curcol[4];		\
+ GLboolean ecol, evtx;	\
+ GLenum what=a;		\
+ int idx=0;
+#define glVertex2f(a, b) vtx[idx*2+0]=a; vtx[idx*2+1]=b; memcpy(col+idx*4, curcol, sizeof(GLfloat)*4); idx++
+#define glEnd()	\
+ ecol=glIsEnabled(GL_COLOR_ARRAY);	\
+ evtx=glIsEnabled(GL_VERTEX_ARRAY);			\
+ if (!evtx) glEnableClientState(GL_VERTEX_ARRAY);	\
+ if (!ecol) glEnableClientState(GL_COLOR_ARRAY);	\
+ glVertexPointer(2, GL_FLOAT, 0, vtx); 				\
+ glColorPointer(4, GL_FLOAT, 0, col);				\
+ glDrawArrays(what, 0, idx);						\
+ if (!evtx) glDisableClientState(GL_VERTEX_ARRAY);	\
+ if (!ecol) glDisableClientState(GL_TEXTURE_COORD_ARRAY)
+#define glColor4f(r,g,b,a)	do {curcol[0]=r; curcol[1]=g; curcol[2]=b; curcol[3]=a;} while(0)
+#endif
 /*
 * R_ApplySoftwareGamma
 */
@@ -1299,9 +1355,18 @@ static void R_ApplySoftwareGamma( void )
 	qglEnd();
 
 	qglEnable( GL_TEXTURE_2D );
+#ifdef HAVE_GLES
+#undef glColor4f
+#endif
 
 	qglColor4f( 1, 1, 1, 1 );
 }
+#ifdef HAVE_GLES
+#undef GL_QUADS
+#undef glBegin
+#undef glVertex2f
+#undef glEnd
+#endif
 
 //=============================================================================
 
@@ -1812,6 +1877,28 @@ static void R_CullEntities( void )
 			r_entVisBits[i>>3] |= ( 1<<( i&7 ) );
 	}
 }
+#ifdef HAVE_GLES
+#define glBegin(a)	\
+ GLfloat col[4*256];	\
+ GLfloat vtx[3*256];	\
+ GLfloat curcol[4];		\
+ GLboolean ecol, evtx;	\
+ GLenum what=a;		\
+ int idx=0;
+#define glVertex3f(a, b, c) vtx[idx*3+0]=a; vtx[idx*3+1]=b; vtx[idx*3+2]=c; memcpy(col+idx*4, curcol, sizeof(GLfloat)*4); idx++
+#define glEnd()	\
+ ecol=glIsEnabled(GL_COLOR_ARRAY);	\
+ evtx=glIsEnabled(GL_VERTEX_ARRAY);			\
+ if (!evtx) glEnableClientState(GL_VERTEX_ARRAY);		\
+ if (!ecol) glEnableClientState(GL_COLOR_ARRAY);	\
+ glVertexPointer(3, GL_FLOAT, 0, vtx); \
+ glColorPointer(4, GL_FLOAT, 0, col); \
+ glDrawArrays(what, 0, idx);	\
+ if (!evtx) glDisableClientState(GL_VERTEX_ARRAY);		\
+ if (!ecol) glDisableClientState(GL_COLOR_ARRAY)
+#define glColor4f(r,g,b,a)	do {curcol[0]=r; curcol[1]=g; curcol[2]=b; curcol[3]=a;} while(0)
+#define glVertex3fv(a)	glVertex3f(a[0], a[1], a[2])
+#endif
 
 /*
 * R_DrawNullModel
@@ -1840,7 +1927,13 @@ static void R_DrawNullModel( void )
 
 	qglEnd();
 }
-
+#ifdef HAVE_GLES
+#undef glBegin
+#undef glVertex3f
+#undef glVertex3fv
+#undef glColor4f
+#undef glEnd
+#endif
 /*
 * R_DrawBmodelEntities
 */
@@ -2083,6 +2176,21 @@ void R_AddDebugBounds( const vec3_t mins, const vec3_t maxs )
 		r_num_debug_bounds++;
 	}
 }
+#ifdef HAVE_GLES
+#define glBegin(a)	\
+ GLfloat vtx[3*256];	\
+ GLboolean evtx;	\
+ GLenum what=a;		\
+ int idx=0;
+#define glVertex3f(a, b, c) vtx[idx*3+0]=a; vtx[idx*3+1]=b; vtx[idx*3+2]=c; idx++
+#define glEnd()	\
+ evtx=glIsEnabled(GL_VERTEX_ARRAY);			\
+ if (!evtx) glEnableClientState(GL_VERTEX_ARRAY);		\
+ glVertexPointer(3, GL_FLOAT, 0, vtx); \
+ glDrawArrays(what, 0, idx);	\
+ if (!evtx) glDisableClientState(GL_VERTEX_ARRAY)
+#define glVertex3fv(a)	glVertex3f(a[0], a[1], a[2])
+#endif
 
 /*
 * R_DrawDebugBounds
@@ -2116,6 +2224,11 @@ static void R_DrawDebugBounds( void )
 
 	R_BackendEndTriangleOutlines();
 }
+#ifdef HAVE_GLES
+#undef glBegin
+#undef glVertex3fv
+#undef glEnd
+#endif
 
 //=======================================================================
 
@@ -2258,12 +2371,13 @@ static void R_UpdateSwapInterval( void )
 	if( r_swapinterval->modified )
 	{
 		r_swapinterval->modified = qfalse;
-
+#ifndef HAVE_GLES
 		if( !glState.stereoEnabled )
 		{
 			if( qglSwapInterval )
 				qglSwapInterval( r_swapinterval->integer );
 		}
+#endif
 	}
 }
 
@@ -2345,7 +2459,7 @@ void R_BeginFrame( float cameraSeparation, qboolean forceClear )
 	if( gl_drawbuffer->modified )
 	{
 		gl_drawbuffer->modified = qfalse;
-
+#ifndef HAVE_GLES
 		if( glState.cameraSeparation == 0 || !glState.stereoEnabled )
 		{
 			if( Q_stricmp( gl_drawbuffer->string, "GL_FRONT" ) == 0 )
@@ -2353,6 +2467,7 @@ void R_BeginFrame( float cameraSeparation, qboolean forceClear )
 			else
 				qglDrawBuffer( GL_BACK );
 		}
+#endif
 	}
 
 	// texturemode stuff

@@ -148,6 +148,7 @@ static r_glslfeat_t R_ShadowbitsToProgramFeatures( unsigned int shadowBits )
 */
 static void R_RenderMeshGLSL_Material( r_glslfeat_t programFeatures )
 {
+#ifndef HAVE_GLES
 	int i;
 	int tcgen, rgbgen;
 	int state;
@@ -459,6 +460,7 @@ static void R_RenderMeshGLSL_Material( r_glslfeat_t programFeatures )
 
 		qglUseProgramObjectARB( 0 );
 	}
+#endif 	//HAVE_GLES
 }
 
 /*
@@ -466,6 +468,7 @@ static void R_RenderMeshGLSL_Material( r_glslfeat_t programFeatures )
 */
 static void R_RenderMeshGLSL_Distortion( r_glslfeat_t programFeatures )
 {
+#ifndef HAVE_GLES
 	int i, last_slot;
 	unsigned last_framenum;
 	int state, tcgen;
@@ -578,6 +581,7 @@ static void R_RenderMeshGLSL_Distortion( r_glslfeat_t programFeatures )
 
 		qglUseProgramObjectARB( 0 );
 	}
+#endif
 }
 
 /*
@@ -588,6 +592,7 @@ static void R_RenderMeshGLSL_Distortion( r_glslfeat_t programFeatures )
 static void R_RenderMeshGLSL_ShadowmapArray( r_glslfeat_t programFeatures, 
 		int numShadows, shadowGroup_t **shadowGroups, int *scissor )
 {
+#ifndef HAVE_GLES
 	int i;
 	int state;
 	int program, object;
@@ -641,6 +646,7 @@ static void R_RenderMeshGLSL_ShadowmapArray( r_glslfeat_t programFeatures,
 		GL_SelectTexture( i );
 		qglTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE_ARB, GL_NONE );
 	}
+#endif
 }
 
 /*
@@ -651,6 +657,7 @@ static void R_RenderMeshGLSL_ShadowmapArray( r_glslfeat_t programFeatures,
 */
 static void R_RenderMeshGLSL_Shadowmap( r_glslfeat_t programFeatures )
 {
+#ifndef HAVE_GLES
 	int i;
 	int scissor[4], old_scissor[4];
 	int numShadows;
@@ -705,6 +712,7 @@ static void R_RenderMeshGLSL_Shadowmap( r_glslfeat_t programFeatures )
 	}
 
 	GL_Scissor( old_scissor[0], old_scissor[1], old_scissor[2], old_scissor[3] );
+#endif
 }
 
 #ifdef HARDWARE_OUTLINES
@@ -713,6 +721,7 @@ static void R_RenderMeshGLSL_Shadowmap( r_glslfeat_t programFeatures )
 */
 static void R_RenderMeshGLSL_Outline( r_glslfeat_t programFeatures )
 {
+#ifndef HAVE_GLES
 	int faceCull;
 	int state;
 	int program, object;
@@ -758,6 +767,7 @@ static void R_RenderMeshGLSL_Outline( r_glslfeat_t programFeatures )
 	qglUseProgramObjectARB( 0 );
 
 	GL_Cull( faceCull );
+#endif
 }
 #endif
 
@@ -766,6 +776,7 @@ static void R_RenderMeshGLSL_Outline( r_glslfeat_t programFeatures )
 */
 static void R_RenderMeshGLSL_Turbulence( r_glslfeat_t programFeatures )
 {
+#ifndef HAVE_GLES
 	int i;
 	int state;
 	int program, object;
@@ -812,6 +823,7 @@ static void R_RenderMeshGLSL_Turbulence( r_glslfeat_t programFeatures )
 
 		qglUseProgramObjectARB( 0 );
 	}
+#endif
 }
 
 /*
@@ -819,6 +831,7 @@ static void R_RenderMeshGLSL_Turbulence( r_glslfeat_t programFeatures )
 */
 static void R_RenderMeshGLSL_DynamicLights( r_glslfeat_t programFeatures )
 {
+#ifndef HAVE_GLES
 	int state;
 	int program, object;
 	shaderpass_t *pass = r_back.accumPasses[0];
@@ -850,6 +863,7 @@ static void R_RenderMeshGLSL_DynamicLights( r_glslfeat_t programFeatures )
 
 		qglUseProgramObjectARB( 0 );
 	}
+#endif
 }
 
 /*
@@ -857,6 +871,7 @@ static void R_RenderMeshGLSL_DynamicLights( r_glslfeat_t programFeatures )
 */
 static void R_RenderMeshGLSL_Q3AShader( r_glslfeat_t programFeatures )
 {
+#ifndef HAVE_GLES
 	int state;
 	int program, object;
 	vec3_t entDist;
@@ -978,6 +993,7 @@ static void R_RenderMeshGLSL_Q3AShader( r_glslfeat_t programFeatures )
 
 		qglUseProgramObjectARB( 0 );
 	}
+#endif
 }
 
 /*
@@ -985,6 +1001,7 @@ static void R_RenderMeshGLSL_Q3AShader( r_glslfeat_t programFeatures )
 */
 static void R_RenderMeshGLSL_PlanarShadow( r_glslfeat_t programFeatures )
 {
+#ifndef HAVE_GLES
 	int state;
 	int program, object;
 	shaderpass_t *pass = r_back.accumPasses[0];
@@ -1030,6 +1047,7 @@ static void R_RenderMeshGLSL_PlanarShadow( r_glslfeat_t programFeatures )
 	}
 	
 	qglEnable( GL_TEXTURE_2D );
+#endif
 }
 
 /*
@@ -1037,6 +1055,7 @@ static void R_RenderMeshGLSL_PlanarShadow( r_glslfeat_t programFeatures )
 */
 static void R_RenderMeshGLSL_Cellshade( r_glslfeat_t programFeatures )
 {
+#ifndef HAVE_GLES
 	int state;
 	int program, object;
 	vec3_t entDist;
@@ -1146,6 +1165,7 @@ static void R_RenderMeshGLSL_Cellshade( r_glslfeat_t programFeatures )
 
 		qglUseProgramObjectARB( 0 );
 	}
+#endif
 }
 
 /*
@@ -1153,6 +1173,7 @@ static void R_RenderMeshGLSL_Cellshade( r_glslfeat_t programFeatures )
 */
 void R_RenderMeshGLSLProgrammed( int programType )
 {
+#ifndef HAVE_GLES
 	r_glslfeat_t features = 0;
 
 	features |= R_BonesTransformsToProgramFeatures();
@@ -1194,4 +1215,5 @@ void R_RenderMeshGLSLProgrammed( int programType )
 	}
 
 	r_back.currentShaderHasGLSLPasses = qtrue;
+#endif
 }

@@ -362,14 +362,16 @@ void R_InitOcclusionQueries( void )
 
 	if( !r_occlusionShader )
 		r_occlusionShader = R_LoadShader( "***r_occlusion***", SHADER_OPAQUE_OCCLUDER, qfalse, 0, SHADER_INVALID, NULL );
-
+#ifndef HAVE_GLES
 	if( !glConfig.ext.occlusion_query )
+#endif
 		return;
-
+#ifndef HAVE_GLES
 	qglGenQueriesARB( MAX_OQ_TOTAL, r_occlusionQueries );
 
 	meshbuf->sortkey = MB_ENTITY2NUM( r_worldent ) | MB_MODEL;
 	meshbuf->shaderkey = r_occlusionShader->sortkey;
+#endif
 }
 
 /*
@@ -500,7 +502,7 @@ int R_IssueOcclusionQuery( int query, entity_t *e, vec3_t mins, vec3_t maxs )
 	if( r_queriesBits[query>>3] & ( 1<<( query&7 ) ) )
 		return -1;
 	r_queriesBits[query>>3] |= ( 1<<( query&7 ) );
-
+#ifndef HAVE_GLES
 	R_RenderOccludingSurfaces();
 
 	mesh.numVerts = 8;
@@ -521,7 +523,7 @@ int R_IssueOcclusionQuery( int query, entity_t *e, vec3_t mins, vec3_t maxs )
 	R_RenderMeshBuffer( &r_occluderMB, NULL );
 
 	qglEndQueryARB( GL_SAMPLES_PASSED_ARB );
-
+#endif
 	return query;
 }
 
@@ -546,7 +548,7 @@ unsigned int R_GetOcclusionQueryResult( int query, qboolean wait )
 		return 1;
 	if( !R_OcclusionQueryIssued( query ) )
 		return 1;
-
+#ifndef HAVE_GLES
 	query = r_occlusionQueries[query];
 
 	qglGetQueryObjectivARB( query, GL_QUERY_RESULT_AVAILABLE_ARB, &available );
@@ -564,7 +566,7 @@ unsigned int R_GetOcclusionQueryResult( int query, qboolean wait )
 		return 0;
 
 	qglGetQueryObjectuivARB( query, GL_QUERY_RESULT_ARB, &sampleCount );
-
+#endif
 	return sampleCount;
 }
 
@@ -591,10 +593,12 @@ qboolean R_GetOcclusionQueryResultBool( int type, int key, qboolean wait )
 void R_ShutdownOcclusionQueries( void )
 {
 	r_occlusionShader = NULL;
-
+#ifndef HAVE_GLES
 	if( !glConfig.ext.occlusion_query )
+#endif
 		return;
-
+#ifndef HAVE_GLES
 	qglDeleteQueriesARB( MAX_OQ_TOTAL, r_occlusionQueries );
 	r_occludersQueued = qfalse;
+#endif
 }

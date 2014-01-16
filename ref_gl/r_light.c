@@ -124,12 +124,14 @@ void R_AddDynamicLights( unsigned int dlightbits, int state )
 
 		GL_SetState( state | ( i ? 0 : GLSTATE_BLEND_MTEX ) );
 		GL_SetTexCoordArrayMode( 0 );
+#ifndef HAVE_GLES
 		GL_EnableTexGen( GL_S, GL_OBJECT_LINEAR );
 		GL_EnableTexGen( GL_T, GL_OBJECT_LINEAR );
 		GL_EnableTexGen( GL_R, 0 );
 		GL_EnableTexGen( GL_Q, 0 );
+#endif
 	}
-
+#ifndef HAVE_GLES
 	if( glConfig.ext.texture3D )
 	{
 		GL_EnableTexGen( GL_R, GL_OBJECT_LINEAR );
@@ -137,6 +139,7 @@ void R_AddDynamicLights( unsigned int dlightbits, int state )
 		qglEnable( GL_TEXTURE_3D );
 	}
 	else
+#endif
 	{
 		qglEnable( GL_TEXTURE_2D );
 	}
@@ -158,7 +161,7 @@ void R_AddDynamicLights( unsigned int dlightbits, int state )
 		GL_Bind( 0, r_dlighttexture );
 		GL_LoadTexMatrix( m );
 		qglColor4f( light->color[0], light->color[1], light->color[2], 255 );
-
+#ifndef HAVE_GLES	//*TODO* must probably do something here
 		xyzFallof[0][0] = inverseIntensity;
 		xyzFallof[0][3] = -dlorigin[0] * inverseIntensity;
 		qglTexGenfv( GL_S, GL_OBJECT_PLANE, xyzFallof[0] );
@@ -182,10 +185,10 @@ void R_AddDynamicLights( unsigned int dlightbits, int state )
 			qglTexGenfv( GL_S, GL_OBJECT_PLANE, xyzFallof[2] );
 			qglTexGenfv( GL_T, GL_OBJECT_PLANE, xyzFallof[3] );
 		}
-
+#endif
 		R_DrawElements();
 	}
-
+#ifndef HAVE_GLES
 	if( glConfig.ext.texture3D )
 	{
 		GL_EnableTexGen( GL_R, 0 );
@@ -193,6 +196,7 @@ void R_AddDynamicLights( unsigned int dlightbits, int state )
 		qglEnable( GL_TEXTURE_2D );
 	}
 	else
+#endif
 	{
 		qglDisable( GL_TEXTURE_2D );
 		GL_SelectTexture( 0 );
