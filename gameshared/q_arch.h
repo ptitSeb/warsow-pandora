@@ -207,6 +207,9 @@ typedef UINT_PTR socket_handle_t;
 #elif defined ( __alpha__ )
 #define CPUSTRING "axp"
 #define ARCH "axp"
+#elif defined ( PANDORA )
+#define CPUSTRING "arm"
+#define ARCH	  "arm"
 #else
 #define CPUSTRING "Unknown"
 #define ARCH "Unknown"

@@ -298,7 +298,7 @@ static void install_grabs( void )
 	if( in_dgamouse->integer )
 	{
 		int MajorVersion, MinorVersion;
-
+#ifndef PANDORA
 		if( XF86DGAQueryVersion( x11display.dpy, &MajorVersion, &MinorVersion ) )
 		{
 			XF86DGADirectVideo( x11display.dpy, x11display.scr, XF86DGADirectMouse );
@@ -307,6 +307,7 @@ static void install_grabs( void )
 			dgamouse = qtrue;
 		}
 		else
+#endif
 		{
 			// unable to query, probalby not supported
 			Com_Printf( "Failed to detect XF86DGA Mouse\n" );

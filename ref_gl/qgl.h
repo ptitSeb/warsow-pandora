@@ -490,6 +490,7 @@ typedef unsigned int GLhandleARB;
 #define RENDERBUFFER_FREE_MEMORY_ATI						0x87FD
 #endif /* GL_ATI_meminfo */
 
+#endif	//HAVE_GLES
 #endif /*__QGL_H__*/
 
 #ifndef APIENTRY
@@ -703,4 +704,3 @@ QGL_WGL_EXT(BOOL, wglSetDeviceGammaRamp3DFX, (HDC, WORD *));
 // GLX_EXT Functions
 
 #endif	//HAVE_GLES
-#endif	//__QGL_H__

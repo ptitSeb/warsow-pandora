@@ -1065,6 +1065,7 @@ init_qgl:
 		QGL_Shutdown();
 		return rserr_unknown;
 	}
+
 #ifndef HAVE_GLES
 	// create the window and set up the context
 	err = GLimp_SetMode( x, y, width, height, fullScreen, wideScreen );

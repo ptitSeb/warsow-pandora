@@ -60,7 +60,7 @@ AR=ar
 RANLIB=ranlib
 
 ifeq ($(USE_PANDORA),YES)
-BASE_ARCH:=arm
+BASE_ARCH=arm
 else
 # this nice line comes from the linux kernel makefile
 BASE_ARCH:=$(shell uname -m | sed -e s/i.86/i386/ -e s/sun4u/sparc/ -e s/sparc64/sparc/ -e s/arm.*/arm/ -e s/sa110/arm/ -e s/alpha/axp/)
@@ -125,7 +125,7 @@ CFLAGS_ANGELWRAP=-I$(ANGELSCRIPT_INC)
 
 ###########################################################
 # libRocket stuff
-LIBROCKET_DIR=../libsrcs/libRocket/libRocket
+LIBROCKET_DIR=libRocket/libRocket
 LIBROCKET_MAKEFILE=Makefile.warsow
 LIBROCKET_INC=$(LIBROCKET_DIR)/Include
 LIBROCKET_LIB=$(LIBROCKET_DIR)/lib/libRocketWSW.a
@@ -209,7 +209,8 @@ X11BASE?=/usr/X11R6
 
 CFLAGS_COMMON=$(CFLAGS) -pipe -I. -I$(LOCALBASE)/include -I$(X11BASE)/include -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -Wall -Wno-unused-function -fvisibility=hidden
 ifeq ($(USE_PANDORA),YES)
-CFLAGS_COMMON+=-DPANDORA -DHAVE_GLES -DARM -DNEON -DCROUCH
+CFLAGS_COMMON+=-DPANDORA -DARM -DNEON -DCROUCH
+#CFLAGS_COMMON+=-DPANDORA -DHAVE_GLES -DARM -DNEON -DCROUCH
 CFLAGS_COMMON+=-I/mnt/utmp/codeblocks/usr/include/libpng12
 CFLAGS_RELEASE=-Ofast -fno-strict-aliasing -ffast-math -funroll-loops -DNDEBUG -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp -fsigned-char
 else
@@ -249,7 +250,7 @@ endif
 
 ifeq ($(USE_PANDORA),YES)
 LDFLAGS_CLIENT=-ljpeg -lpng12 -lz -L$(X11BASE)/$(LIB) -lX11 -lXext -lXxf86dga -lXxf86vm -lXinerama -lXrandr -lrt $(shell curl-config --libs)
-LDFLAGS_CLIENT+=-lEGL -lGLES_CM
+#LDFLAGS_CLIENT+=-lEGL -lGLES_CM
 else
 LDFLAGS_CLIENT=-ljpeg -lpng -lz -L$(X11BASE)/$(LIB) -lX11 -lXext -lXxf86dga -lXxf86vm -lXinerama -lXrandr -lrt $(shell curl-config --libs)
 endif

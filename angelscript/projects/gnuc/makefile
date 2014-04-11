@@ -47,7 +47,7 @@ else
 	CXX ?= gcc
 	# On i686 architecture you may need to add -march=i686 if you get 
 	# an undefined symbol for __sync_sub_and_fetch_4 in as_atomic.cpp.
-	CXXFLAGS += -g -Wall -fPIC -fno-strict-aliasing
+	CXXFLAGS += -g -Wall -fPIC -fno-strict-aliasing -fsigned-char
 endif
 
 AR ?= ar
@@ -100,7 +100,10 @@ ifeq ($(TARGETPLATFORM), iphone)
 	OBJ += $(OBJDIR)/as_callfunc_arm_xcode.o
 else ifeq ($(TARGETPLATFORM), android)
 	OBJ += $(OBJDIR)/as_callfunc_arm_gcc.o
+else ifeq ($(USE_PANDORA),YES)
+	OBJ += $(OBJDIR)/as_callfunc_arm_gcc.o
 endif
+OBJ += $(OBJDIR)/as_callfunc_arm_gcc.o
 
 all: $(BIN)
 

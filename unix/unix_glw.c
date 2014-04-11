@@ -62,7 +62,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #define INIT_MASK ( KeyPressMask | KeyReleaseMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask | FocusChangeMask | DISPLAY_MASK )
 
 // use experimental Xrandr resolution?
-#define _XRANDR_OVER_VIDMODE_
+//#define _XRANDR_OVER_VIDMODE_
 
 x11display_t x11display;
 x11wndproc_t x11wndproc;
@@ -1309,7 +1309,7 @@ void GLimp_EndFrame( void )
 */
 qboolean GLimp_GetGammaRamp( size_t stride, unsigned short *ramp )
 {
-#ifndef HAVE_GLES
+#ifndef PANDORA
 	if( XF86VidModeGetGammaRamp( x11display.dpy, x11display.scr, stride, ramp, ramp + stride, ramp + ( stride << 1 ) ) != 0 )
 		return qtrue;
 #endif
@@ -1321,7 +1321,7 @@ qboolean GLimp_GetGammaRamp( size_t stride, unsigned short *ramp )
 */
 void GLimp_SetGammaRamp( size_t stride, unsigned short *ramp )
 {
-#ifndef HAVE_GLES
+#ifndef PANDORA
 	XF86VidModeSetGammaRamp( x11display.dpy, x11display.scr, stride, ramp, ramp + stride, ramp + ( stride << 1 ) );
 #endif
 }
