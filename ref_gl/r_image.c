@@ -2137,6 +2137,11 @@ void R_Upload32( qbyte **data, int width, int height, int flags, int *upload_wid
 	qbyte *scaled = NULL;
 	int scaledWidth, scaledHeight;
 
+	if ((width==0) || (height==0)) {
+		Com_Printf("Warning: R_Upload32(%p, %i, %i...)", data, width, height);
+		return;
+	}
+
 	assert( samples );
 
 	// we can't properly mipmap a NPT-texture in software

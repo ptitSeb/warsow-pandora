@@ -20,7 +20,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 // snd_ogg.c
 
 #include "snd_local.h"
-#include <vorbis/vorbisfile.h>
+//#include <vorbis/vorbisfile.h>
+#include <tremor/ivorbisfile.h>
 
 #ifdef VORBISLIB_RUNTIME
 
@@ -33,7 +34,11 @@ int ( *qov_pcm_seek )( OggVorbis_File *vf, ogg_int64_t pos );
 int ( *qov_raw_seek )( OggVorbis_File *vf, ogg_int64_t pos );
 ogg_int64_t ( *qov_raw_tell )( OggVorbis_File *vf );
 vorbis_info *( *qov_info )( OggVorbis_File *vf, int link );
+#ifdef IS_TREMOR
+long ( *qov_read )( OggVorbis_File *vf, char *buffer, int length, int *bitstream );
+#else
 long ( *qov_read )( OggVorbis_File *vf, char *buffer, int length, int bigendianp, int word, int sgned, int *bitstream );
+#endif
 
 dllfunc_t oggvorbisfuncs[] =
 {
@@ -59,7 +64,11 @@ ogg_int64_t ( *qov_pcm_total )( OggVorbis_File *vf, int i ) = ov_pcm_total;
 int ( *qov_raw_seek )( OggVorbis_File *vf, ogg_int64_t pos ) = ov_raw_seek;
 ogg_int64_t ( *qov_raw_tell )( OggVorbis_File *vf ) = ov_raw_tell;
 vorbis_info *( *qov_info )( OggVorbis_File *vf, int link ) = ov_info;
+#ifdef IS_TREMOR
+long ( *qov_read )( OggVorbis_File *vf, char *buffer, int length, int *bitstream ) = ov_read;
+#else
 long ( *qov_read )( OggVorbis_File *vf, char *buffer, int length, int bigendianp, int word, int sgned, int *bitstream ) = ov_read;
+#endif
 long ( *qov_streams )( OggVorbis_File *vf ) = ov_streams;
 long ( *qov_seekable )( OggVorbis_File *vf ) = ov_seekable;
 int ( *qov_pcm_seek )( OggVorbis_File *vf, ogg_int64_t pos ) = ov_pcm_seek;
@@ -242,7 +251,11 @@ sfxcache_t *SNDOGG_Load( sfx_t *s )
 #ifdef ENDIAN_BIG
 		bytes_read = qov_read( &vorbisfile, buffer+bytes_read_total, len-bytes_read_total, 1, 2, 1, &bitstream );
 #elif defined (ENDIAN_LITTLE)
+#ifdef IS_TREMOR
+		bytes_read = qov_read( &vorbisfile, buffer+bytes_read_total, len-bytes_read_total, &bitstream );
+#else
 		bytes_read = qov_read( &vorbisfile, buffer+bytes_read_total, len-bytes_read_total, 0, 2, 1, &bitstream );
+#endif
 #else
 #error "runtime endianess detection support missing"
 #endif
@@ -392,7 +405,11 @@ static int SNDOGG_FRead( bgTrack_t *track, void *ptr, size_t size )
 #ifdef ENDIAN_BIG
 		read = qov_read( track->vorbisFile, ( char * )ptr, (int)size, 1, 2, 1, &bs );
 #else
+#ifdef IS_TREMOR
+		read = qov_read( track->vorbisFile, ( char * )ptr, (int)size, &bs );
+#else
 		read = qov_read( track->vorbisFile, ( char * )ptr, (int)size, 0, 2, 1, &bs );
+#endif
 #endif
 	} while( read == OV_HOLE && cnt++ < 3 );
 

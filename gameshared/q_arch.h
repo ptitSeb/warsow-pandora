@@ -175,7 +175,8 @@ typedef UINT_PTR socket_handle_t;
 
 #define GL_DRIVERNAME  "libGL.so.1"
 
-#define VORBISFILE_LIBNAME "libvorbisfile.so"
+//#define VORBISFILE_LIBNAME "libvorbisfile.so"
+#define VORBISFILE_LIBNAME "libvorbisiec.so"
 
 #ifdef __FreeBSD__
 #define BUILDSTRING "FreeBSD"

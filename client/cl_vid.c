@@ -368,12 +368,10 @@ void VID_CheckChanges( void )
 			Cvar_ForceSet( "vid_fullscreen", "0" );
 			Cvar_ForceSet( "vid_mode", VID_DEFAULTFALLBACKMODE );
 		}
-Com_Printf( "About to VID_ChangeMode\n");
 		err = VID_ChangeMode( &VID_Sys_Init_ );
 		if( err != rserr_ok ) {
 			Com_Error( ERR_FATAL, "VID_ChangeMode() failed with code %i", err );
 		}
-Com_Printf( "VID_ChangeMode done\n");
 
 		// stop and free all sounds
 		CL_SoundModule_Init( vid_ref_verbose || vid_ref_sound_restart );
@@ -449,7 +447,6 @@ void VID_Init( void )
 	vid_ref_prevmode = atoi( VID_DEFAULTFALLBACKMODE );
 
 	VID_CheckChanges();
-printf("VID_INit done\n");
 }
 
 /*

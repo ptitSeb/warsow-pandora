@@ -41,13 +41,23 @@ else ifeq ($(TARGETPLATFORM), android)
 	-fno-exceptions \
 	-march=armv6 -mthumb-interwork \
 	-mfloat-abi=softfp -fno-rtti
+else ifeq ($(USE_PANDORA),YES)
+	OBJDIR = obj
+	LIBDIR = ../../lib
+	CXX ?= gcc
+	CXXFLAGS += -g -Wall -fPIC -fno-strict-aliasing -fsigned-char -fno-tree-vectorize -O2 \
+	-Wall \
+	-fno-exceptions \
+	-march=armv6 -mthumb-interwork \
+	-mcpu=cortex-a8 -mfpu=neon \
+	-mfloat-abi=softfp -fno-rtti
 else
 	OBJDIR = obj
 	LIBDIR = ../../lib
 	CXX ?= gcc
 	# On i686 architecture you may need to add -march=i686 if you get 
 	# an undefined symbol for __sync_sub_and_fetch_4 in as_atomic.cpp.
-	CXXFLAGS += -g -Wall -fPIC -fno-strict-aliasing -fsigned-char
+	CXXFLAGS += -g -Wall -fPIC -fno-strict-aliasing -fsigned-char -fno-tree-vectorize -O1
 endif
 
 AR ?= ar

@@ -29,6 +29,10 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "addon/addon_cvar.h"
 #include "addon/addon_stringutils.h"
 
+#ifdef __arm__
+#pragma GCC optimize 1
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -220,7 +224,7 @@ int qasCreateContext( int engineHandle )
 		return -1;
 
 	ch = ( contexthandle_t * )QAS_Malloc( sizeof( contexthandle_t ) );
-
+printf("qasCreateContext, ch=%p\n", ch);
 	// We don't want to allow the script to hang the application, e.g. with an
 	// infinite loop, so we'll use the line callback function to set a timeout
 	// that will abort the script after a certain time. Before executing the 

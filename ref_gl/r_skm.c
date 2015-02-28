@@ -326,10 +326,12 @@ void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, b
 		joints[i].name = LittleLong( joints[i].name );
 		joints[i].parent = LittleLong( joints[i].parent );
 
+		vec3_t trans, rot, scal;
+
 		for( j = 0; j < 3; j++ ) {
-			joints[i].translate[j] = LittleFloat( joints[i].translate[j] );
-			joints[i].rotate[j] = LittleFloat( joints[i].rotate[j] );
-			joints[i].scale[j] = LittleFloat( joints[i].scale[j] );
+			/*joints[i].translate[j]*/trans[j] = LittleFloat( joints[i].translate[j] );
+			/*joints[i].rotate[j]*/rot[j] = LittleFloat( joints[i].rotate[j] );
+			/*joints[i].scale[j]*/scal[j] = LittleFloat( joints[i].scale[j] );
 		}
 
 		if( joints[i].parent >= (int)i ) {
@@ -339,7 +341,7 @@ void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, b
 		poutmodel->bones[i].name = texts + joints[i].name;
 		poutmodel->bones[i].parent = joints[i].parent;
 
-		DualQuat_FromQuat3AndVector( joints[i].rotate, joints[i].translate, baseposes[i].dualquat );
+		DualQuat_FromQuat3AndVector( /*joints[i].rotate*/rot, /*joints[i].translate*/trans, baseposes[i].dualquat );
 
 		// scale is unused
 
@@ -356,6 +358,10 @@ void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, b
 
 		DualQuat_Copy( baseposes[i].dualquat, poutmodel->invbaseposes[i].dualquat );
 		DualQuat_Invert( poutmodel->invbaseposes[i].dualquat );
+
+		memcpy(joints[i].translate, trans, sizeof(vec3_t));
+		memcpy(joints[i].rotate, rot, sizeof(vec3_t));
+		memcpy(joints[i].scale, scal, sizeof(vec3_t));
 	}
 
 
@@ -387,15 +393,20 @@ void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, b
 
 		poutmodel->frames[i].boneposes = ( bonepose_t * )pmem; pmem += sizeof( bonepose_t ) * poutmodel->numbones;
 
-		for( j = 0, pbp = poutmodel->frames[i].boneposes; j < header->num_poses; j++, pbp++ ) {
-			translate[0] = poses[j].channeloffset[0]; if( poses[j].mask & 0x01 ) translate[0] += *framedata++ * poses[j].channelscale[0];
-			translate[1] = poses[j].channeloffset[1]; if( poses[j].mask & 0x02 ) translate[1] += *framedata++ * poses[j].channelscale[1];
-			translate[2] = poses[j].channeloffset[2]; if( poses[j].mask & 0x04 ) translate[2] += *framedata++ * poses[j].channelscale[2];
+		float tmpoffset[7];
+		float tmpscale[7];
 
-			rotate[0] = poses[j].channeloffset[3]; if( poses[j].mask & 0x08 ) rotate[0] += *framedata++ * poses[j].channelscale[3];
-			rotate[1] = poses[j].channeloffset[4]; if( poses[j].mask & 0x10 ) rotate[1] += *framedata++ * poses[j].channelscale[4];
-			rotate[2] = poses[j].channeloffset[5]; if( poses[j].mask & 0x20 ) rotate[2] += *framedata++ * poses[j].channelscale[5];
-			rotate[3] = poses[j].channeloffset[6]; if( poses[j].mask & 0x40 ) rotate[3] += *framedata++ * poses[j].channelscale[6];
+		for( j = 0, pbp = poutmodel->frames[i].boneposes; j < header->num_poses; j++, pbp++ ) {
+			memcpy(tmpoffset, poses[j].channeloffset, sizeof(float)*7);
+			memcpy(tmpscale, poses[j].channeloffset, sizeof(float)*7);
+			translate[0] = tmpoffset[0]; if( poses[j].mask & 0x01 ) translate[0] += *framedata++ * tmpscale[0];
+			translate[1] = tmpoffset[1]; if( poses[j].mask & 0x02 ) translate[1] += *framedata++ * tmpscale[1];
+			translate[2] = tmpoffset[2]; if( poses[j].mask & 0x04 ) translate[2] += *framedata++ * tmpscale[2];
+
+			rotate[0] = tmpoffset[3]; if( poses[j].mask & 0x08 ) rotate[0] += *framedata++ * tmpscale[3];
+			rotate[1] = tmpoffset[4]; if( poses[j].mask & 0x10 ) rotate[1] += *framedata++ * tmpscale[4];
+			rotate[2] = tmpoffset[5]; if( poses[j].mask & 0x20 ) rotate[2] += *framedata++ * tmpscale[5];
+			rotate[3] = tmpoffset[6]; if( poses[j].mask & 0x40 ) rotate[3] += *framedata++ * tmpscale[6];
 			if( rotate[3] > 0 ) {
 				Vector4Inverse( rotate );
 			}

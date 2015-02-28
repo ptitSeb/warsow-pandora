@@ -1430,13 +1430,15 @@ static void R_ApplyTCMods( const shaderpass_t *pass, mat4x4_t result )
 	double t1, t2, sint, cost;
 	mat4x4_t m1, m2;
 	const tcmod_t *tcmod;
+	float arm_tmp[6];
 
 	for( i = 0, tcmod = pass->tcmods; i < pass->numtcmods; i++, tcmod++ )
 	{
+		memcpy(arm_tmp, tcmod->args, sizeof(arm_tmp));
 		switch( tcmod->type )
 		{
 		case TC_MOD_ROTATE:
-			cost = tcmod->args[0] * r_back.currentShaderTime;
+			cost = arm_tmp[0] * r_back.currentShaderTime;
 			sint = R_FastSin( cost );
 			cost = R_FastSin( cost + 0.25 );
 			m2[0] =  cost, m2[1] = sint, m2[12] =  0.5f * ( sint - cost + 1 );
@@ -1445,27 +1447,27 @@ static void R_ApplyTCMods( const shaderpass_t *pass, mat4x4_t result )
 			Matrix4_Multiply2D( m2, m1, result );
 			break;
 		case TC_MOD_SCALE:
-			Matrix4_Scale2D( result, tcmod->args[0], tcmod->args[1] );
+			Matrix4_Scale2D( result, arm_tmp[0], arm_tmp[1] );
 			break;
 		case TC_MOD_TURB:
 			if( pass->program_type != GLSL_PROGRAM_TYPE_TURBULENCE )
 			{
 				t1 = ( 1.0 / 4.0 );
-				t2 = tcmod->args[2] + r_back.currentShaderTime * tcmod->args[3];
-				Matrix4_Scale2D( result, 1 + ( tcmod->args[1] * R_FastSin( t2 ) + tcmod->args[0] ) * t1, 1 + ( tcmod->args[1] * R_FastSin( t2 + 0.25 ) + tcmod->args[0] ) * t1 );
+				t2 = arm_tmp[2] + r_back.currentShaderTime * arm_tmp[3];
+				Matrix4_Scale2D( result, 1 + ( arm_tmp[1] * R_FastSin( t2 ) +arm_tmp[0] ) * t1, 1 + ( arm_tmp[1] * R_FastSin( t2 + 0.25 ) + arm_tmp[0] ) * t1 );
 			}
 			break;
 		case TC_MOD_STRETCH:
-			table = R_TableForFunc( tcmod->args[0] );
-			t2 = tcmod->args[3] + r_back.currentShaderTime * tcmod->args[4];
-			t1 = FTABLE_EVALUATE( table, t2 ) * tcmod->args[2] + tcmod->args[1];
+			table = R_TableForFunc( arm_tmp[0] );
+			t2 = arm_tmp[3] + r_back.currentShaderTime * arm_tmp[4];
+			t1 = FTABLE_EVALUATE( table, t2 ) * arm_tmp[2] + arm_tmp[1];
 			t1 = t1 ? 1.0f / t1 : 1.0f;
 			t2 = 0.5f - 0.5f * t1;
 			Matrix4_Stretch2D( result, t1, t2 );
 			break;
 		case TC_MOD_SCROLL:
-			t1 = tcmod->args[0] * r_back.currentShaderTime;
-			t2 = tcmod->args[1] * r_back.currentShaderTime;
+			t1 = arm_tmp[0] * r_back.currentShaderTime;
+			t2 = arm_tmp[1] * r_back.currentShaderTime;
 			if( pass->program_type != GLSL_PROGRAM_TYPE_DISTORTION )
 			{	// HACK HACK HACK
 				t1 = t1 - floor( t1 );
@@ -1474,8 +1476,8 @@ static void R_ApplyTCMods( const shaderpass_t *pass, mat4x4_t result )
 			Matrix4_Translate2D( result, t1, t2 );
 			break;
 		case TC_MOD_TRANSFORM:
-			m2[0] = tcmod->args[0], m2[1] = tcmod->args[2], m2[12] = tcmod->args[4],
-				m2[5] = tcmod->args[1], m2[4] = tcmod->args[3], m2[13] = tcmod->args[5];
+			m2[0] = arm_tmp[0], m2[1] = arm_tmp[2], m2[12] = arm_tmp[4],
+				m2[5] = arm_tmp[1], m2[4] = arm_tmp[3], m2[13] = arm_tmp[5];
 			Matrix4_Copy2D( result, m1 );
 			Matrix4_Multiply2D( m2, m1, result );
 			break;
@@ -1490,8 +1492,10 @@ static void R_ApplyTCMods( const shaderpass_t *pass, mat4x4_t result )
 */
 static inline image_t *R_ShaderpassTex( const shaderpass_t *pass, int unit )
 {
-	if( pass->anim_fps )
-		return pass->anim_frames[(int)( pass->anim_fps * r_back.currentShaderTime ) % pass->anim_numframes];
+	float anim_fps;
+	memcpy(&anim_fps, &(pass->anim_fps), sizeof(float));
+	if( anim_fps )
+		return pass->anim_frames[(int)( anim_fps * r_back.currentShaderTime ) % pass->anim_numframes];
 	if( pass->flags & SHADERPASS_LIGHTMAP )
 		return r_worldbrushmodel->lightmapImages[r_back.superLightStyle->lightmapNum[r_back.lightmapStyleNum[unit]]];
 	if( pass->flags & SHADERPASS_PORTALMAP )
@@ -1514,13 +1518,13 @@ void R_BindShaderpass( const shaderpass_t *pass, image_t *tex, int unit, r_glslf
 	if( !pass->program_type ) {
 		if( tex->depth > 1 ) {
 			qglDisable( GL_TEXTURE_2D );
-			#ifndef HAVE_GLES
+			#if !defined(HAVE_GLES) && !defined(PANDORA)
 			qglEnable( GL_TEXTURE_3D );
 			#endif
 		}
 		else {
 			qglEnable( GL_TEXTURE_2D );
-			#ifndef HAVE_GLES
+			#if !defined(HAVE_GLES) && !defined(PANDORA)
 			qglDisable( GL_TEXTURE_3D );
 			#endif
 		}
@@ -1690,31 +1694,33 @@ void R_ModifyColor( const shaderpass_t *pass, qboolean forceAlpha, qboolean firs
 		case RGB_GEN_WAVE:
 		case RGB_GEN_CUSTOMWAVE:
 			rgbgenfunc = pass->rgbgen.func;
+			float arm_tmp[4];
+			if (rgbgenfunc) memcpy(arm_tmp, rgbgenfunc->args, sizeof(arm_tmp));
 			if( !rgbgenfunc || rgbgenfunc->type == SHADER_FUNC_NONE )
 			{
 				temp = 1;
 			}
 			else if( rgbgenfunc->type == SHADER_FUNC_RAMP )
 			{
-				temp = R_DistanceRamp( rgbgenfunc->args[2], rgbgenfunc->args[3], rgbgenfunc->args[0], rgbgenfunc->args[1] );
+				temp = R_DistanceRamp( arm_tmp[2], arm_tmp[3], arm_tmp[0], arm_tmp[1]/*rgbgenfunc->args[2], rgbgenfunc->args[3], rgbgenfunc->args[0], rgbgenfunc->args[1]*/ );
 			}
-			else if( rgbgenfunc->args[1] == 0 )
+			else if( arm_tmp[1]/*rgbgenfunc->args[1]*/ == 0 )
 			{
-				temp = rgbgenfunc->args[0];
+				temp = arm_tmp[0]/*rgbgenfunc->args[0]*/;
 			}
 			else
 			{
 				if( rgbgenfunc->type == SHADER_FUNC_NOISE )
 				{
-					temp = R_BackendGetNoiseValue( 0, 0, 0, ( r_back.currentShaderTime + rgbgenfunc->args[2] ) * rgbgenfunc->args[3] );
+					temp = R_BackendGetNoiseValue( 0, 0, 0, ( r_back.currentShaderTime + arm_tmp[2]/*rgbgenfunc->args[2]*/ ) * arm_tmp[3]/*rgbgenfunc->args[3]*/ );
 				}
 				else
 				{
 					table = R_TableForFunc( rgbgenfunc->type );
-					temp = r_back.currentShaderTime * rgbgenfunc->args[3] + rgbgenfunc->args[2];
-					temp = FTABLE_EVALUATE( table, temp ) * rgbgenfunc->args[1] + rgbgenfunc->args[0];
+					temp = r_back.currentShaderTime * arm_tmp[3]/*rgbgenfunc->args[3]*/ + arm_tmp[2]/*rgbgenfunc->args[2]*/;
+					temp = FTABLE_EVALUATE( table, temp ) * arm_tmp[1]/*rgbgenfunc->args[1]*/ + arm_tmp[0]/*rgbgenfunc->args[0]*/;
 				}
-				temp = temp * rgbgenfunc->args[1] + rgbgenfunc->args[0];
+				temp = temp * arm_tmp[1]/*rgbgenfunc->args[1]*/ + arm_tmp[0]/*rgbgenfunc->args[0]*/;
 			}
 
 			if( pass->rgbgen.type == RGB_GEN_ENTITYWAVE )
@@ -1736,7 +1742,9 @@ void R_ModifyColor( const shaderpass_t *pass, qboolean forceAlpha, qboolean firs
 			}
 			else
 			{
-				VectorCopy( pass->rgbgen.args, v );
+				float arm_tmp[4];
+				memcpy(arm_tmp, pass->rgbgen.args, sizeof(arm_tmp));
+				VectorCopy( arm_tmp/*pass->rgbgen.args*/, v );
 				VectorScale( v, (1.0 / (1<<r_back.overBrightBits)), v );
 			}
 
@@ -1850,28 +1858,30 @@ void R_ModifyColor( const shaderpass_t *pass, qboolean forceAlpha, qboolean firs
 		break;
 	case ALPHA_GEN_WAVE:
 		alphagenfunc = pass->alphagen.func;
+		float arm_tmp[4];
+		if (alphagenfunc) memcpy(arm_tmp, alphagenfunc->args, sizeof(arm_tmp));
 		if( !alphagenfunc || alphagenfunc->type == SHADER_FUNC_NONE )
 		{
 			a = 1;
 		}
 		else if( alphagenfunc->type == SHADER_FUNC_RAMP )
 		{
-			a = R_DistanceRamp( alphagenfunc->args[2], alphagenfunc->args[3], alphagenfunc->args[0], alphagenfunc->args[1] );
+			a = R_DistanceRamp( arm_tmp[2], arm_tmp[3], arm_tmp[0], arm_tmp[1] );
 		}
 		else
 		{
 			if( alphagenfunc->type == SHADER_FUNC_NOISE )
 			{
-				a = R_BackendGetNoiseValue( 0, 0, 0, ( r_back.currentShaderTime + alphagenfunc->args[2] ) * alphagenfunc->args[3] );
+				a = R_BackendGetNoiseValue( 0, 0, 0, ( r_back.currentShaderTime + arm_tmp[2] ) * arm_tmp[3] );
 			}
 			else
 			{
 				table = R_TableForFunc( alphagenfunc->type );
-				a = alphagenfunc->args[2] + r_back.currentShaderTime * alphagenfunc->args[3];
-				a = FTABLE_EVALUATE( table, a );
+				a = arm_tmp[2] + r_back.currentShaderTime * arm_tmp[3];
+				memcpy(&a, &FTABLE_EVALUATE( table, a ), sizeof(a));
 			}
 
-			a = a * alphagenfunc->args[1] + alphagenfunc->args[0];
+			a = a * arm_tmp[1] + arm_tmp[0];
 		}
 
 		c = a <= 0 ? 0 : R_FloatToByte( a );

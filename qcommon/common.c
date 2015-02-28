@@ -1302,7 +1302,6 @@ void Qcommon_Init( int argc, char **argv )
 	}
 
 	Com_Printf( "\n====== %s Initialized ======\n", APPLICATION );
-
 	Cbuf_Execute();
 }
 

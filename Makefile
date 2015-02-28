@@ -209,10 +209,10 @@ X11BASE?=/usr/X11R6
 
 CFLAGS_COMMON=$(CFLAGS) -pipe -I. -I$(LOCALBASE)/include -I$(X11BASE)/include -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -Wall -Wno-unused-function -fvisibility=hidden
 ifeq ($(USE_PANDORA),YES)
-CFLAGS_COMMON+=-DPANDORA -DARM -DNEON -DCROUCH
+CFLAGS_COMMON+=-DPANDORA -DARM -DCROUCH
 #CFLAGS_COMMON+=-DPANDORA -DHAVE_GLES -DARM -DNEON -DCROUCH
 CFLAGS_COMMON+=-I/mnt/utmp/codeblocks/usr/include/libpng12
-CFLAGS_RELEASE=-Ofast -fno-strict-aliasing -ffast-math -funroll-loops -DNDEBUG -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp -fsigned-char
+CFLAGS_RELEASE=-Ofast -fno-strict-aliasing -ffast-math -funroll-loops -DNDEBUG -mcpu=cortex-a8 -mfpu=neon -mfloat-abi=softfp -fsigned-char -g
 else
 CFLAGS_RELEASE=-O2 -fno-strict-aliasing -ffast-math -funroll-loops -DNDEBUG -msse2
 endif
@@ -234,13 +234,17 @@ LXXFLAGS_COMMON=$(LDFLAGS) -lstdc++ -lsupc++
 ifeq ($(OS),FreeBSD)
 LDFLAGS_COMMON+= -L/usr/local/lib -lm -pthread
 else
+ifeq ($(USE_PANDORA),YES)
+LDFLAGS_COMMON+= -L/mnt/usr/codeblocks/usr/lib -ldl -lm -O1 -Wl,--as-needed
+else
 LDFLAGS_COMMON+= -L/usr/local/lib -ldl -lm -O1 -Wl,--as-needed
 endif
-
-ifneq ($(DEBUG_BUILD),YES)
-LDFLAGS_COMMON+= -s
-LXXFLAGS_COMMON+= -s
 endif
+
+#ifneq ($(DEBUG_BUILD),YES)
+#LDFLAGS_COMMON+= -s
+#LXXFLAGS_COMMON+= -s
+#endif
 
 ifeq ($(ARCH),x86_64)
 LIB=lib64
@@ -263,7 +267,8 @@ ifeq ($(BUILD_SND_OPENAL),YES)
 OPENAL_CONFIG?=pkg-config openal
 
 CFLAGS_OPENAL=$(shell $(OPENAL_CONFIG) --cflags)
-LDFLAGS_OPENAL=-lvorbisfile
+#LDFLAGS_OPENAL=-lvorbisfile
+LDFLAGS_OPENAL=-lvorbisidec
 endif
 
 # sdl
@@ -272,6 +277,7 @@ SDL_CONFIG?=sdl-config
 
 CFLAGS_SDL=$(shell $(SDL_CONFIG) --cflags)
 LDFLAGS_QF=$(shell $(SDL_CONFIG) --libs) -lvorbisfile
+LDFLAGS_QF=$(shell $(SDL_CONFIG) --libs) -lvorbisidec
 endif # BUILD_SND_QF
 
 ifeq ($(BUILD_CIN),YES)
@@ -692,7 +698,7 @@ $(ANGELSCRIPT_INC)/angelscript.h:
 
 $(ANGELSCRIPT_LIB): $(ANGELSCRIPT_INC)/angelscript.h
 	@echo "> * Building Angelscript library first"
-	@CXX=$(CXX) AR=$(AR) RANLIB=$(RANLIB) CXXFLAGS="$(CFLAGS)" $(MAKE) -C $(ANGELSCRIPT_PROJECT_DIR)
+	@CXX=$(CXX) AR=$(AR) RANLIB=$(RANLIB) CXXFLAGS="$(CFLAGS) -O1 -g" $(MAKE) -C $(ANGELSCRIPT_PROJECT_DIR)
 	@echo "> * Done building angelscript library."
 	@echo "> *********************************************************"
 	@echo "> * Continuing angelwrap building..."

@@ -22,7 +22,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
 #include "snd_decoder.h"
-#include <vorbis/vorbisfile.h>
+//#include <vorbis/vorbisfile.h>
+#include <tremor/ivorbisfile.h>
 
 #ifdef VORBISLIB_RUNTIME
 
@@ -32,7 +33,11 @@ int ( *qov_clear )( OggVorbis_File *vf );
 int ( *qov_open_callbacks )( void *datasource, OggVorbis_File *vf, char *initial, long ibytes, ov_callbacks callbacks );
 ogg_int64_t ( *qov_pcm_total )( OggVorbis_File *vf, int i );
 vorbis_info *( *qov_info )( OggVorbis_File *vf, int link );
+#ifdef IS_TREMOR
+long ( *qov_read )( OggVorbis_File *vf, char *buffer, int length, int *bitstream );
+#else
 long ( *qov_read )( OggVorbis_File *vf, char *buffer, int length, int bigendianp, int word, int sgned, int *bitstream );
+#endif
 long ( *qov_streams )( OggVorbis_File *vf );
 long ( *qov_seekable )( OggVorbis_File *vf );
 int ( *qov_pcm_seek )( OggVorbis_File *vf, ogg_int64_t pos );
@@ -57,7 +62,11 @@ int ( *qov_clear )( OggVorbis_File *vf ) = ov_clear;
 int ( *qov_open_callbacks )( void *datasource, OggVorbis_File *vf, char *initial, long ibytes, ov_callbacks callbacks ) = ov_open_callbacks;
 ogg_int64_t ( *qov_pcm_total )( OggVorbis_File *vf, int i ) = ov_pcm_total;
 vorbis_info *( *qov_info )( OggVorbis_File *vf, int link ) = ov_info;
+#ifdef IS_TREMOR
+long ( *qov_read )( OggVorbis_File *vf, char *buffer, int length, int *bitstream ) = ov_read;
+#else
 long ( *qov_read )( OggVorbis_File *vf, char *buffer, int length, int bigendianp, int word, int sgned, int *bitstream ) = ov_read;
+#endif
 long ( *qov_streams )( OggVorbis_File *vf ) = ov_streams;
 long ( *qov_seekable )( OggVorbis_File *vf ) = ov_seekable;
 int ( *qov_pcm_seek )( OggVorbis_File *vf, ogg_int64_t pos ) = ov_pcm_seek;
@@ -236,7 +245,11 @@ void *decoder_ogg_load( const char *filename, snd_info_t *info )
 #ifdef ENDIAN_BIG
 		bytes_read = qov_read( &vorbisfile, buffer+bytes_read_total, info->size-bytes_read_total, 1, 2, 1, &bitstream );
 #elif defined (ENDIAN_LITTLE)
+#ifdef IS_TREMOR
+                bytes_read = qov_read( &vorbisfile, buffer+bytes_read_total, info->size-bytes_read_total, &bitstream );
+#else
 		bytes_read = qov_read( &vorbisfile, buffer+bytes_read_total, info->size-bytes_read_total, 0, 2, 1, &bitstream );
+#endif
 #else
 #error "runtime endianess detection support missing"
 #endif
@@ -345,8 +358,13 @@ int decoder_ogg_read( snd_stream_t *stream, int bytes, void *buffer )
 		bytes_read = qov_read( &ogg_stream->vorbisfile, (char *)buffer+bytes_read_total, bytes-bytes_read_total, 1, 2, 1,
 			&bitstream );
 #elif defined (ENDIAN_LITTLE)
+#ifdef IS_TREMOR
+		bytes_read = qov_read( &ogg_stream->vorbisfile, (char *)buffer+bytes_read_total, bytes-bytes_read_total,
+			&bitstream );
+#else
 		bytes_read = qov_read( &ogg_stream->vorbisfile, (char *)buffer+bytes_read_total, bytes-bytes_read_total, 0, 2, 1,
 			&bitstream );
+#endif
 #else
 #error "runtime endianess detection support missing"
 #endif
