@@ -224,7 +224,6 @@ int qasCreateContext( int engineHandle )
 		return -1;
 
 	ch = ( contexthandle_t * )QAS_Malloc( sizeof( contexthandle_t ) );
-printf("qasCreateContext, ch=%p\n", ch);
 	// We don't want to allow the script to hang the application, e.g. with an
 	// infinite loop, so we'll use the line callback function to set a timeout
 	// that will abort the script after a certain time. Before executing the 

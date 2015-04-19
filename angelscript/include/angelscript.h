@@ -948,27 +948,23 @@ public:
 // Function pointers
 
 // Use our own memset() and memcpy() implementations for better portability
-inline void asMemClear(void *_p, size_t size)
+ __attribute__ ((optimize("no-tree-vectorize"))) inline void asMemClear(void *_p, size_t size)
 {
-	/*
+	
 	char *p = (char *)_p;
 	const char *e = p + size;
 	for( ; p < e; p++ )
 		*p = 0;
-	*/
-	memset(_p, 0, size);
 }
 
-inline void asMemCopy(void *_d, const void *_s, size_t size)
+ __attribute__ ((optimize("no-tree-vectorize"))) inline void asMemCopy(void *_d, const void *_s, size_t size)
 {
-	/*
+	
 	char *d = (char *)_d;
 	const char *s = (const char *)_s;
 	const char *e = s + size;
 	for( ; s < e; d++, s++ )
 		*d = *s;
-	*/
-	memcpy(_d, _s, size);
 }
 
 // Template function to capture all global functions,
