@@ -63,6 +63,10 @@ static int mx, my;
 static qboolean ignore_one = qfalse;
 static qboolean go_fullscreen_on_focus = qfalse;
 
+#ifdef PANDORA
+extern int noshouldermb;
+#endif
+
 int Sys_XTimeToSysTime( unsigned long xtime );
 int Sys_EvdevTimeToSysTime( struct timeval *time );
 
@@ -663,12 +667,23 @@ static char *XLateKey( XKeyEvent *ev, int *key )
 
 	case XK_Pause:  *key = K_PAUSE;    break;
 
+#ifdef PANDORA
+	case XK_Shift_L:  		*key = K_SHIFT;  		break;
+	case XK_Shift_R:  		*key = (noshouldermb)?K_SHIFT:K_MOUSE2;  		break;
+#else
 	case XK_Shift_L:
 	case XK_Shift_R:  *key = K_SHIFT;   break;
+#endif
 
+#ifdef PANDORA
+	case XK_Execute:
+	case XK_Control_L:  		*key = K_CTRL;  		break;
+	case XK_Control_R:  		*key = (noshouldermb)?K_CTRL:K_MOUSE1;  		break;
+#else
 	case XK_Execute:
 	case XK_Control_L:
 	case XK_Control_R:  *key = K_CTRL;  break;
+#endif
 
 	case XK_Alt_L:
 	case XK_Meta_L:

@@ -67,6 +67,10 @@ unsigned int time_after_game;
 unsigned int time_before_ref;
 unsigned int time_after_ref;
 
+#ifdef PANDORA
+int noshouldermb=0;
+#endif
+
 /*
 ==============================================================
 
@@ -681,12 +685,19 @@ void COM_InitArgv( int argc, char **argv )
 	if( argc > MAX_NUM_ARGVS )
 		Com_Error( ERR_FATAL, "argc > MAX_NUM_ARGVS" );
 	com_argc = argc;
-	for( i = 0; i < argc; i++ )
+	int j = 0;
+	for( i = 0; i < argc; i++, j++ )
 	{
+		#ifdef PANDORA
+		if( !strcmp( argv[i], "--noshouldermb" )) {
+			noshouldermb=1;
+			j--;
+		} else
+		#endif
 		if( !argv[i] || strlen( argv[i] ) >= MAX_TOKEN_CHARS )
-			com_argv[i][0] = '\0';
+			com_argv[j][0] = '\0';
 		else
-			com_argv[i] = argv[i];
+			com_argv[j] = argv[i];
 	}
 }
 
