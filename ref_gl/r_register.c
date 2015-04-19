@@ -715,7 +715,11 @@ void R_Register( void )
 {
 	r_norefresh = Cvar_Get( "r_norefresh", "0", 0 );
 	r_fullbright = Cvar_Get( "r_fullbright", "0", CVAR_LATCH_VIDEO );
+#ifdef PANDORA
+	r_lightmap = Cvar_Get( "r_lightmap", "1", 0 );
+#else
 	r_lightmap = Cvar_Get( "r_lightmap", "0", 0 );
+#endif
 	r_drawentities = Cvar_Get( "r_drawentities", "1", CVAR_CHEAT );
 	r_drawworld = Cvar_Get( "r_drawworld", "1", CVAR_CHEAT );
 	r_novis = Cvar_Get( "r_novis", "0", 0 );
@@ -727,7 +731,11 @@ void R_Register( void )
 	r_lockpvs = Cvar_Get( "r_lockpvs", "0", CVAR_CHEAT );
 	r_clear = Cvar_Get( "r_clear", "0", CVAR_ARCHIVE );
 	r_nobind = Cvar_Get( "r_nobind", "0", 0 );
+#ifdef PANDORA
+	r_picmip = Cvar_Get( "r_picmip", "2", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
+#else
 	r_picmip = Cvar_Get( "r_picmip", "0", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
+#endif
 	r_skymip = Cvar_Get( "r_skymip", "0", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
 	r_polyblend = Cvar_Get( "r_polyblend", "1", 0 );
 
@@ -739,7 +747,11 @@ void R_Register( void )
 	r_bloom_sample_size = Cvar_Get( "r_bloom_sample_size", "320", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
 	r_bloom_fast_sample = Cvar_Get( "r_bloom_fast_sample", "0", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
 
+#ifdef PANDORA
+	r_ignorehwgamma = Cvar_Get( "r_ignorehwgamma", "1", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
+#else
 	r_ignorehwgamma = Cvar_Get( "r_ignorehwgamma", "0", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
+#endif
 	r_overbrightbits = Cvar_Get( "r_overbrightbits", "0", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
 	r_mapoverbrightbits = Cvar_Get( "r_mapoverbrightbits", "2", CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
 
@@ -748,7 +760,11 @@ void R_Register( void )
 	r_flaresize = Cvar_Get( "r_flaresize", "40", CVAR_ARCHIVE );
 	r_flarefade = Cvar_Get( "r_flarefade", "3", CVAR_ARCHIVE );
 
+#ifdef PANDORA
+	r_dynamiclight = Cvar_Get( "r_dynamiclight", "0", CVAR_ARCHIVE );
+#else
 	r_dynamiclight = Cvar_Get( "r_dynamiclight", "1", CVAR_ARCHIVE );
+#endif
 	r_coronascale = Cvar_Get( "r_coronascale", "0.2", 0 );
 	r_subdivisions = Cvar_Get( "r_subdivisions", STR_TOSTR( SUBDIVISIONS_DEFAULT ), CVAR_ARCHIVE|CVAR_LATCH_VIDEO );
 	r_faceplanecull = Cvar_Get( "r_faceplanecull", "1", CVAR_ARCHIVE );
