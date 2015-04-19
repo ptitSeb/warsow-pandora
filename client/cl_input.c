@@ -306,7 +306,11 @@ void CL_MouseMove( usercmd_t *cmd, int mx, int my )
 	accelSensitivity *= CL_GameModule_SetSensitivityScale( sensitivity->value );
 
 	mouse_x *= accelSensitivity;
+	#ifdef PANDORA
+	mouse_y *= accelSensitivity*0.5f;
+	#else
 	mouse_y *= accelSensitivity;
+	#endif
 
 	if( !mouse_x && !mouse_y )
 		return;
@@ -347,6 +351,85 @@ kbutton_t in_strafe, in_speed, in_use, in_attack;
 kbutton_t in_up, in_down;
 kbutton_t in_special;
 kbutton_t in_zoom;
+
+#ifdef PANDORA
+void ToggleKeyDown( kbutton_t *b ) {
+	int k;
+	char    *c;
+	unsigned uptime;
+
+	c = Cmd_Argv( 1 );
+	if ( c[0] ) {
+		k = atoi( c );
+	} else {
+		k = -1;     // typed manually at the console for continuous down
+	}
+
+	if ( k == b->down[0] || k == b->down[1] ) {
+		return;     // repeating key
+	}
+
+	if ( !b->down[0] ) {
+		b->down[0] = k;
+	} else if ( !b->down[1] ) {
+		b->down[1] = k;
+	} else {
+		Com_Printf( "Three keys down for a button!\n" );
+		return;
+	}
+
+	if (b->state&1) {	// toggle
+		b->state &= ~1; // now up
+		b->state |= 4;  // impulse up
+	} else
+		b->state |= 1 + 2;// down + impulse
+	// save timestamp for partial frame summing
+	// save timestamp
+	c = Cmd_Argv( 2 );
+	if (b->state&1) {
+		b->downtime = atoi( c );
+		if( !b->downtime )
+			b->downtime = sys_frame_time - 100;
+	}
+	else 
+	{
+		uptime = atoi( c );
+		if( uptime )
+			b->msec += uptime - b->downtime;
+		else
+			b->msec += 10;
+	}
+}
+
+void ToggleKeyUp( kbutton_t *b ) {
+	int k;
+	char    *c;
+
+	c = Cmd_Argv( 1 );
+	if ( c[0] ) {
+		k = atoi( c );
+	} else {
+		// typed manually at the console, assume for unsticking, so clear all
+		b->down[0] = b->down[1] = 0;
+		b->state = 4;
+		return;
+	}
+
+	if ( b->down[0] == k ) {
+		b->down[0] = 0;
+	} else if ( b->down[1] == k ) {
+		b->down[1] = 0;
+	} else {
+		return;     // key up without coresponding down (menu pass through)
+	}
+	if ( b->down[0] || b->down[1] ) {
+		return;     // some other key is still holding it down
+	}
+
+}
+
+cvar_t	*in_toggleCrouch;
+#endif
 
 /*
 * KeyDown
@@ -432,10 +515,29 @@ static void KeyUp( kbutton_t *b )
 
 static void IN_KLookDown( void ) { KeyDown( &in_klook ); }
 static void IN_KLookUp( void ) { KeyUp( &in_klook ); }
+#ifdef PANDORA
+static void IN_UpDown( void ) {
+	if (in_toggleCrouch->integer) {
+		in_down.state = 0; KeyDown( &in_up );
+	} else KeyDown(&in_up);
+}
+#else
 static void IN_UpDown( void ) { KeyDown( &in_up ); }
+#endif
 static void IN_UpUp( void ) { KeyUp( &in_up ); }
+#ifdef PANDORA
+static void IN_DownDown( void ) {
+	if (in_toggleCrouch->integer) ToggleKeyDown( &in_down );
+	else KeyDown(&in_down);
+}
+static void IN_DownUp( void ) {
+	if (in_toggleCrouch->integer) ToggleKeyUp( &in_down );
+	else KeyUp(&in_down);
+}
+#else
 static void IN_DownDown( void ) { KeyDown( &in_down ); }
 static void IN_DownUp( void ) { KeyUp( &in_down ); }
+#endif
 static void IN_LeftDown( void ) { KeyDown( &in_left ); }
 static void IN_LeftUp( void ) { KeyUp( &in_left ); }
 static void IN_RightDown( void ) { KeyDown( &in_right ); }
@@ -706,6 +808,10 @@ void CL_InitInput( void )
 		else if( cl_ucmdTimeNudge->integer > MAX_UCMD_TIMENUDGE )
 			Cvar_SetValue( "cl_ucmdTimeNudge", MAX_UCMD_TIMENUDGE );
 	}
+#endif
+
+#ifdef PANDORA
+	in_toggleCrouch = Cvar_Get("in_toggleCrouch", "0", 0);
 #endif
 
 	in_initialized = qtrue;
