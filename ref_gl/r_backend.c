@@ -790,6 +790,8 @@ static void R_DeformVertices( void )
 	deformv = &r_back.currentShader->deforms[0];
 	for( i = 0; i < r_back.currentShader->numdeforms; i++, deformv++ )
 	{
+		float tmp_args[4];
+		memcpy(tmp_args, deformv->func.args, 4*sizeof(float));
 		switch( deformv->type )
 		{
 		case DEFORMV_NONE:
@@ -799,20 +801,20 @@ static void R_DeformVertices( void )
 			table = R_TableForFunc( deformv->func.type );
 
 			// Deflect vertex along its normal by wave amount
-			if( deformv->func.args[3] == 0 )
+			if( tmp_args[3] == 0 )
 			{
-				temp = deformv->func.args[2];
-				deflect = FTABLE_EVALUATE( table, temp ) * deformv->func.args[1] + deformv->func.args[0];
+				temp = tmp_args[2];
+				deflect = FTABLE_EVALUATE( table, temp ) * tmp_args[1] + tmp_args[0];
 
 				for( j = 0; j < r_backacc.numVerts; j++ )
 					VectorMA( inVertsArray[j], deflect, inNormalsArray[j], inVertsArray[j] );
 			}
 			else
 			{
-				args[0] = deformv->func.args[0];
-				args[1] = deformv->func.args[1];
-				args[2] = deformv->func.args[2] + deformv->func.args[3] * r_back.currentShaderTime;
-				args[3] = deformv->args[0];
+				args[0] = tmp_args[0];
+				args[1] = tmp_args[1];
+				args[2] = tmp_args[2] + tmp_args[3] * r_back.currentShaderTime;
+				args[3] = tmp_args[0];
 
 				for( j = 0; j < r_backacc.numVerts; j++ )
 				{
@@ -825,8 +827,8 @@ static void R_DeformVertices( void )
 
 		case DEFORMV_NORMAL:
 			// without this * 0.1f deformation looks wrong, although q3a doesn't have it
-			args[0] = deformv->func.args[3] * r_back.currentShaderTime * 0.1f;
-			args[1] = deformv->func.args[1];
+			args[0] = tmp_args[3] * r_back.currentShaderTime * 0.1f;
+			args[1] = tmp_args[1];
 
 			for( j = 0; j < r_backacc.numVerts; j++ )
 			{
@@ -840,23 +842,28 @@ static void R_DeformVertices( void )
 
 		case DEFORMV_MOVE:
 			table = R_TableForFunc( deformv->func.type );
-			temp = deformv->func.args[2] + r_back.currentShaderTime * deformv->func.args[3];
-			deflect = FTABLE_EVALUATE( table, temp ) * deformv->func.args[1] + deformv->func.args[0];
+			temp = tmp_args[2] + r_back.currentShaderTime * tmp_args[3];
+			deflect = FTABLE_EVALUATE( table, temp ) * tmp_args[1] + tmp_args[0];
 
-			for( j = 0; j < r_backacc.numVerts; j++ )
-				VectorMA( inVertsArray[j], deflect, deformv->args, inVertsArray[j] );
+			for( j = 0; j < r_backacc.numVerts; j++ ) {
+				float tmp[4];
+				memcpy(tmp, deformv->args, sizeof(tmp));
+				VectorMA( inVertsArray[j], deflect, tmp, inVertsArray[j] );
+			}
 			break;
 
 		case DEFORMV_BULGE:
-			args[0] = deformv->args[0];
-			args[1] = deformv->args[1];
-			args[2] = r_back.currentShaderTime * deformv->args[2];
+			args[0] = tmp_args[0];
+			args[1] = tmp_args[1];
+			args[2] = r_back.currentShaderTime * tmp_args[2];
 
 			for( j = 0; j < r_backacc.numVerts; j++ )
 			{
+				float tmp[4];
+				memcpy(tmp, deformv->args, sizeof(tmp));
 				temp = ( coordsArray[j][0] * args[0] + args[2] ) / M_TWOPI;
 				deflect = R_FastSin( temp );
-				deflect = max( -1 + deformv->args[3], deflect ) * args[1];
+				deflect = max( -1 + tmp[3], deflect ) * args[1];
 				VectorMA( inVertsArray[j], deflect, inNormalsArray[j], inVertsArray[j] );
 			}
 			break;
@@ -1839,6 +1846,7 @@ void R_ModifyColor( const shaderpass_t *pass, qboolean forceAlpha, qboolean firs
 
 	bArray = colorArrayCopy[0];
 	inArray = inColorsArray[0][0];
+	float arm_tmp[4];
 
 	if( noAlpha )
 		goto done_alpha;
@@ -1852,13 +1860,13 @@ void R_ModifyColor( const shaderpass_t *pass, qboolean forceAlpha, qboolean firs
 			bArray[3] = 255;
 		break;
 	case ALPHA_GEN_CONST:
-		c = R_FloatToByte( pass->alphagen.args[0] );
+		memcpy(arm_tmp, pass->alphagen.args, sizeof(float));
+		c = R_FloatToByte( arm_tmp[0] );
 		for( i = 0; i < r_backacc.numColors; i++, bArray += 4 )
 			bArray[3] = c;
 		break;
 	case ALPHA_GEN_WAVE:
 		alphagenfunc = pass->alphagen.func;
-		float arm_tmp[4];
 		if (alphagenfunc) memcpy(arm_tmp, alphagenfunc->args, sizeof(arm_tmp));
 		if( !alphagenfunc || alphagenfunc->type == SHADER_FUNC_NONE )
 		{
