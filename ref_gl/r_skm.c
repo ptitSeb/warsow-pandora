@@ -398,7 +398,7 @@ void Mod_LoadSkeletalModel( model_t *mod, const model_t *parent, void *buffer, b
 
 		for( j = 0, pbp = poutmodel->frames[i].boneposes; j < header->num_poses; j++, pbp++ ) {
 			memcpy(tmpoffset, poses[j].channeloffset, sizeof(float)*7);
-			memcpy(tmpscale, poses[j].channeloffset, sizeof(float)*7);
+			memcpy(tmpscale, poses[j].channelscale, sizeof(float)*7);
 			translate[0] = tmpoffset[0]; if( poses[j].mask & 0x01 ) translate[0] += *framedata++ * tmpscale[0];
 			translate[1] = tmpoffset[1]; if( poses[j].mask & 0x02 ) translate[1] += *framedata++ * tmpscale[1];
 			translate[2] = tmpoffset[2]; if( poses[j].mask & 0x04 ) translate[2] += *framedata++ * tmpscale[2];
