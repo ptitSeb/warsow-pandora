@@ -698,7 +698,7 @@ $(ANGELSCRIPT_INC)/angelscript.h:
 
 $(ANGELSCRIPT_LIB): $(ANGELSCRIPT_INC)/angelscript.h
 	@echo "> * Building Angelscript library first"
-	@CXX=$(CXX) AR=$(AR) RANLIB=$(RANLIB) CXXFLAGS="$(CFLAGS) -O1 -g" $(MAKE) -C $(ANGELSCRIPT_PROJECT_DIR)
+	@CXX=$(CXX) AR=$(AR) RANLIB=$(RANLIB) USE_PANDORA=$(USE_PANDORA) CXXFLAGS="$(CFLAGS) -O1 -g" $(MAKE) -C $(ANGELSCRIPT_PROJECT_DIR)
 	@echo "> * Done building angelscript library."
 	@echo "> *********************************************************"
 	@echo "> * Continuing angelwrap building..."
