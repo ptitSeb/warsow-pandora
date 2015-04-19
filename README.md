@@ -15,4 +15,4 @@ This fork is aimed at OpenPandra, so get:
 For the Pandora version, I used some Hardwired modif in the Makefile
 
 For more info on the OpenPandora go here: http://boards.openpandora.org/
-Specific thread for Return to Castle Wolfenstein on the OpenPandora here: http://boards.openpandora.org/index.php/topic/13997-return-to-castle-wolfenstein/
+Specific thread for Warsow on the OpenPandora here: http://boards.openpandora.org/topic/17921-warsow/
